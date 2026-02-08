@@ -66,4 +66,5 @@ jobs:
           releaseBody: 'See the assets to download and install Sprout.'
           releaseDraft: true
           prerelease: false
+          releaseAssetNamePattern: 'Sprout-[platform]-[arch].[ext]'
           args: ${{ matrix.args }}
