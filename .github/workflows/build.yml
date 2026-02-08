@@ -63,9 +63,9 @@ jobs:
             args: ''
           - platform: ubuntu-22.04
             args: ''
-          - platform: macos-latest
+          - platform: macos-14
             args: '--target aarch64-apple-darwin'
-          - platform: macos-latest
+          - platform: macos-13
             args: '--target x86_64-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
@@ -92,7 +92,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.args == '--target aarch64-apple-darwin' && 'aarch64-apple-darwin' || matrix.args == '--target x86_64-apple-darwin' && 'x86_64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -112,7 +112,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: sprout-${{ matrix.platform }}${{ matrix.args && '-' || '' }}${{ matrix.args && 'intel' || '' }}
+          name: sprout-${{ matrix.platform }}${{ matrix.args && '-' || '' }}${{ matrix.args == '--target aarch64-apple-darwin' && 'arm64' || matrix.args == '--target x86_64-apple-darwin' && 'intel' || '' }}
           path: |
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.exe
@@ -120,4 +120,5 @@ jobs:
             src-tauri/target/release/bundle/**/*.deb
             src-tauri/target/release/bundle/**/*.dmg
             src-tauri/target/*/release/bundle/**/*.dmg
+            src-tauri/target/*/release/bundle/**/*.app
           if-no-files-found: ignore

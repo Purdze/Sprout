@@ -63,7 +63,7 @@ pub struct SystemMonitor {
 fn get_config_path() -> PathBuf {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("pumpkin-panel");
+        .join("sprout");
     fs::create_dir_all(&config_dir).ok();
     config_dir.join("servers.json")
 }
@@ -309,7 +309,7 @@ pub struct CloudflareDnsRecord {
 fn get_cloudflare_token_path() -> PathBuf {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("pumpkin-panel");
+        .join("sprout");
     fs::create_dir_all(&config_dir).ok();
     config_dir.join("cloudflare_token.json")
 }
