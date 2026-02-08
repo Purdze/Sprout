@@ -17,6 +17,8 @@ dirs = "5"
 sysinfo = "0.31"
 open = "5"
 flate2 = "1"
+fastnbt = "2"
+toml = "0.8"
 reqwest = { version = "0.12", features = ["stream", "json"] }
 futures-util = "0.3"
 

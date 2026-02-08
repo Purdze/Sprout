@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import type { Server } from '../../types';
 
 const props = defineProps<{
@@ -8,13 +9,49 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   command: [cmd: string];
+  viewInventory: [playerName: string];
 }>();
 
 const playerSearch = ref('');
 const playerViewMode = ref<'grid' | 'list'>('grid');
+const knownPlayers = ref<string[]>([]);
+
+async function loadKnownPlayers() {
+  try {
+    knownPlayers.value = await invoke<string[]>('get_known_players', { id: props.server.id });
+  } catch {
+    knownPlayers.value = [];
+  }
+}
+
+onMounted(loadKnownPlayers);
+watch(() => props.server.id, loadKnownPlayers);
+
+watch(
+  () => props.server.playerList,
+  async (list) => {
+    if (list && list.length > 0) {
+      try {
+        await invoke('update_known_players', { id: props.server.id, online: list });
+        await loadKnownPlayers();
+      } catch {
+        // ignore
+      }
+    }
+  },
+  { deep: true }
+);
+
+const onlinePlayers = computed(() => new Set(props.server.playerList || []));
+
+const allPlayers = computed(() => {
+  const online = props.server.playerList || [];
+  const offlineOnly = knownPlayers.value.filter((p) => !onlinePlayers.value.has(p));
+  return [...online, ...offlineOnly];
+});
 
 const filteredPlayers = computed(() => {
-  const list = props.server.playerList || [];
+  const list = allPlayers.value;
   if (!playerSearch.value) return list;
   return list.filter((p) => p.toLowerCase().includes(playerSearch.value.toLowerCase()));
 });
@@ -51,38 +88,41 @@ const filteredPlayers = computed(() => {
       </div>
     </div>
 
-    <div v-if="!server.playerList || server.playerList.length === 0" class="players-empty">
-      No players online
+    <div v-if="allPlayers.length === 0" class="players-empty">
+      No players have joined this server yet
     </div>
     <div v-else-if="filteredPlayers.length === 0" class="players-empty">
       No players match "{{ playerSearch }}"
     </div>
     <div v-else :class="['player-list', playerViewMode]">
       <div v-for="player in filteredPlayers" :key="player" :class="['player-item', playerViewMode]">
-        <img
-          class="player-avatar"
-          :src="`https://mc-heads.net/avatar/${player}/36`"
-          :alt="player"
-        />
-        <span class="player-name">{{ player }}</span>
+        <div class="player-identity" @click="emit('viewInventory', player)">
+          <img
+            class="player-avatar"
+            :src="`https://mc-heads.net/avatar/${player}/36`"
+            :alt="player"
+          />
+          <span class="player-name">{{ player }}</span>
+          <span :class="['status-dot', { online: onlinePlayers.has(player) }]" />
+        </div>
         <div class="player-actions">
           <button
             class="player-btn kick"
-            :disabled="server.status !== 'running'"
+            :disabled="server.status !== 'running' || !onlinePlayers.has(player)"
             @click="emit('command', `kick ${player}`)"
           >
             Kick
           </button>
           <button
             class="player-btn ban"
-            :disabled="server.status !== 'running'"
+            :disabled="server.status !== 'running' || !onlinePlayers.has(player)"
             @click="emit('command', `ban ${player}`)"
           >
             Ban
           </button>
           <button
             class="player-btn banip"
-            :disabled="server.status !== 'running'"
+            :disabled="server.status !== 'running' || !onlinePlayers.has(player)"
             @click="emit('command', `ban-ip ${player}`)"
           >
             Ban IP
@@ -208,6 +248,18 @@ const filteredPlayers = computed(() => {
   text-align: center;
 }
 
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #555;
+  flex-shrink: 0;
+}
+
+.status-dot.online {
+  background: #4ade80;
+}
+
 .player-actions {
   display: flex;
   gap: 4px;
@@ -246,5 +298,31 @@ const filteredPlayers = computed(() => {
 
 .player-btn:hover:not(:disabled) {
   opacity: 0.8;
+}
+
+.player-identity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.player-identity:hover {
+  opacity: 0.85;
+}
+
+.player-identity:hover .player-name {
+  color: #f97316;
+}
+
+.player-item.grid .player-identity {
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-item.list .player-identity {
+  flex: 1;
 }
 </style>

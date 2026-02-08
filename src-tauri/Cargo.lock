@@ -733,6 +733,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastnbt"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29e3bb1f9ba8b6dbb35d89b415216041c2cad0c3e0b329db85ef5d4fc9e80cd6"
+dependencies = [
+ "byteorder",
+ "cesu8",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3162,6 +3174,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5d440709e79d88e51ac01c4b72fc6cb7314017bb7da9eeff678aa94c10e3ea8"
+dependencies = [
+ "serde",
+ "serde_core",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3461,6 +3483,7 @@ name = "sprout"
 version = "0.1.2"
 dependencies = [
  "dirs 5.0.1",
+ "fastnbt",
  "flate2",
  "futures-util",
  "open",
@@ -3473,6 +3496,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-shell",
  "tokio",
+ "toml 0.8.2",
 ]
 
 [[package]]

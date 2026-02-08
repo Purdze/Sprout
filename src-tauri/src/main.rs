@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Cursor, Write};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
@@ -60,12 +60,280 @@ pub struct SystemMonitor {
     sys: Mutex<System>,
 }
 
+// NBT deserialization types (for reading player .dat files)
+#[derive(Debug, serde::Deserialize)]
+struct PlayerDatNbt {
+    #[serde(rename = "Health", default)]
+    health: Option<f32>,
+    #[serde(rename = "foodLevel", default)]
+    food_level: Option<i32>,
+    #[serde(rename = "XpLevel", default)]
+    xp_level: Option<i32>,
+    #[serde(rename = "playerGameType", default)]
+    player_game_type: Option<i8>,
+    #[serde(rename = "Inventory", default)]
+    inventory: Option<Vec<NbtInventoryItem>>,
+    #[serde(default)]
+    equipment: Option<NbtEquipment>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct NbtInventoryItem {
+    #[serde(rename = "Slot")]
+    slot: i8,
+    id: String,
+    #[serde(default)]
+    count: Option<i32>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct NbtEquipment {
+    #[serde(default)]
+    head: Option<NbtItem>,
+    #[serde(default)]
+    chest: Option<NbtItem>,
+    #[serde(default)]
+    legs: Option<NbtItem>,
+    #[serde(default)]
+    feet: Option<NbtItem>,
+    #[serde(default)]
+    offhand: Option<NbtItem>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct NbtItem {
+    id: String,
+    #[serde(default)]
+    count: Option<i32>,
+}
+
+// Response types for player inventory
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayerDetails {
+    pub name: String,
+    pub uuid: String,
+    pub health: f64,
+    pub max_health: f64,
+    pub food: u32,
+    pub xp_level: u32,
+    pub game_mode: String,
+    pub inventory: Vec<InventorySlot>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InventorySlot {
+    pub slot: i32,
+    pub id: String,
+    pub count: u32,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct UserCacheEntry {
+    name: String,
+    uuid: String,
+}
+
+// For reading features.toml
+#[derive(Debug, Deserialize)]
+struct FeaturesConfig {
+    #[serde(default)]
+    player_data: PlayerDataSection,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default)]
+struct PlayerDataSection {
+    save_player_cron_interval: u64,
+}
+
+impl Default for PlayerDataSection {
+    fn default() -> Self {
+        Self {
+            save_player_cron_interval: 300,
+        }
+    }
+}
+
+// RCON config returned to frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RconConfig {
+    pub enabled: bool,
+    pub port: u16,
+    pub password: String,
+}
+
+fn parse_rcon_config(server_path: &str) -> RconConfig {
+    let features_path = PathBuf::from(server_path).join("config").join("features.toml");
+    if let Ok(content) = fs::read_to_string(&features_path) {
+        // Parse as generic Value to avoid failures from unrelated sections
+        if let Ok(val) = content.parse::<toml::Value>() {
+            if let Some(rcon) = val.get("networking").and_then(|n| n.get("rcon")) {
+                let enabled = rcon
+                    .get("enabled")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let address = rcon
+                    .get("address")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0.0.0.0:25575");
+                let password = rcon
+                    .get("password")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let port = address
+                    .rsplit_once(':')
+                    .and_then(|(_, p)| p.parse::<u16>().ok())
+                    .unwrap_or(25575);
+                return RconConfig {
+                    enabled,
+                    port,
+                    password: password.to_string(),
+                };
+            }
+        }
+    }
+    RconConfig {
+        enabled: false,
+        port: 25575,
+        password: String::new(),
+    }
+}
+
+#[tauri::command]
+fn get_rcon_config(path: String) -> Result<RconConfig, String> {
+    let features_path = PathBuf::from(&path).join("config").join("features.toml");
+    eprintln!("[RCON debug] Looking for: {:?} exists={}", features_path, features_path.exists());
+    if let Ok(content) = fs::read_to_string(&features_path) {
+        if let Ok(val) = content.parse::<toml::Value>() {
+            eprintln!("[RCON debug] Top-level keys: {:?}", val.as_table().map(|t| t.keys().collect::<Vec<_>>()));
+            if let Some(net) = val.get("networking") {
+                eprintln!("[RCON debug] networking keys: {:?}", net.as_table().map(|t| t.keys().collect::<Vec<_>>()));
+            } else {
+                eprintln!("[RCON debug] no 'networking' key found");
+            }
+        } else {
+            eprintln!("[RCON debug] TOML parse failed");
+        }
+    } else {
+        eprintln!("[RCON debug] Could not read file");
+    }
+    Ok(parse_rcon_config(&path))
+}
+
+// ── Inline RCON client (Source RCON protocol) ──
+// Packet: i32 length, i32 request_id, i32 type, body (null-terminated), pad byte
+
+const RCON_AUTH: i32 = 3;
+const RCON_EXEC: i32 = 2;
+
+async fn rcon_send_packet(
+    stream: &mut tokio::net::TcpStream,
+    request_id: i32,
+    packet_type: i32,
+    body: &str,
+) -> Result<(), String> {
+    use tokio::io::AsyncWriteExt;
+    let body_bytes = body.as_bytes();
+    let length = 4 + 4 + body_bytes.len() as i32 + 2; // id + type + body + 2 nulls
+    let mut buf = Vec::with_capacity(length as usize + 4);
+    buf.extend_from_slice(&length.to_le_bytes());
+    buf.extend_from_slice(&request_id.to_le_bytes());
+    buf.extend_from_slice(&packet_type.to_le_bytes());
+    buf.extend_from_slice(body_bytes);
+    buf.push(0); // body null terminator
+    buf.push(0); // pad byte
+    stream
+        .write_all(&buf)
+        .await
+        .map_err(|e| format!("RCON write error: {}", e))
+}
+
+async fn rcon_read_packet(
+    stream: &mut tokio::net::TcpStream,
+) -> Result<(i32, i32, String), String> {
+    use tokio::io::AsyncReadExt;
+    let mut len_buf = [0u8; 4];
+    stream
+        .read_exact(&mut len_buf)
+        .await
+        .map_err(|e| format!("RCON read length error: {}", e))?;
+    let length = i32::from_le_bytes(len_buf) as usize;
+    if !(10..=4096 * 4).contains(&length) {
+        return Err(format!("RCON invalid packet length: {}", length));
+    }
+    let mut payload = vec![0u8; length];
+    stream
+        .read_exact(&mut payload)
+        .await
+        .map_err(|e| format!("RCON read payload error: {}", e))?;
+    let mut cursor = Cursor::new(&payload);
+    let mut id_buf = [0u8; 4];
+    let mut type_buf = [0u8; 4];
+    std::io::Read::read_exact(&mut cursor, &mut id_buf).map_err(|e| e.to_string())?;
+    std::io::Read::read_exact(&mut cursor, &mut type_buf).map_err(|e| e.to_string())?;
+    let request_id = i32::from_le_bytes(id_buf);
+    let packet_type = i32::from_le_bytes(type_buf);
+    let body_len = length - 10; // subtract id(4) + type(4) + 2 null bytes
+    let body = if body_len > 0 {
+        String::from_utf8_lossy(&payload[8..8 + body_len]).to_string()
+    } else {
+        String::new()
+    };
+    Ok((request_id, packet_type, body))
+}
+
+async fn rcon_connect_and_auth(
+    addr: &str,
+    password: &str,
+) -> Result<tokio::net::TcpStream, String> {
+    let mut stream = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        tokio::net::TcpStream::connect(addr),
+    )
+    .await
+    .map_err(|_| "RCON connection timed out".to_string())?
+    .map_err(|e| format!("RCON connect failed: {}", e))?;
+
+    rcon_send_packet(&mut stream, 1, RCON_AUTH, password).await?;
+    let (id, _ptype, _body) = rcon_read_packet(&mut stream).await?;
+    // Some servers send an empty packet before the auth response
+    if id == -1 {
+        return Err("RCON authentication failed (bad password)".to_string());
+    }
+    // Read auth response — may get an extra empty packet first
+    if _ptype != 2 {
+        let (id2, _ptype2, _body2) = rcon_read_packet(&mut stream).await?;
+        if id2 == -1 {
+            return Err("RCON authentication failed".to_string());
+        }
+    }
+    Ok(stream)
+}
+
+async fn rcon_command(stream: &mut tokio::net::TcpStream, cmd: &str) -> Result<String, String> {
+    rcon_send_packet(stream, 2, RCON_EXEC, cmd).await?;
+    let (_id, _ptype, body) = rcon_read_packet(stream).await?;
+    Ok(body)
+}
+
 fn get_config_path() -> PathBuf {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("sprout");
     fs::create_dir_all(&config_dir).ok();
     config_dir.join("servers.json")
+}
+
+fn get_server_data_dir(server_id: &str) -> PathBuf {
+    let dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("sprout")
+        .join("servers")
+        .join(server_id);
+    fs::create_dir_all(&dir).ok();
+    dir
 }
 
 #[tauri::command]
@@ -626,6 +894,544 @@ async fn download_server(path: String, app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+fn format_item_name(id: &str) -> String {
+    id.trim_start_matches("minecraft:")
+        .replace('_', " ")
+        .split_whitespace()
+        .map(|w| {
+            let mut chars = w.chars();
+            match chars.next() {
+                Some(c) => {
+                    let upper: String = c.to_uppercase().collect();
+                    upper + chars.as_str()
+                }
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn sprout_players_path(server_id: &str) -> PathBuf {
+    get_server_data_dir(server_id).join("known_players.json")
+}
+
+#[tauri::command]
+async fn get_known_players(id: String) -> Result<Vec<String>, String> {
+    let cache_path = sprout_players_path(&id);
+    if !cache_path.exists() {
+        return Ok(Vec::new());
+    }
+    let content = fs::read_to_string(&cache_path)
+        .map_err(|e| format!("Failed to read player cache: {}", e))?;
+    let names: Vec<String> = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse player cache: {}", e))?;
+    Ok(names)
+}
+
+#[tauri::command]
+async fn update_known_players(id: String, online: Vec<String>) -> Result<(), String> {
+    let cache_path = sprout_players_path(&id);
+    let mut known: Vec<String> = if cache_path.exists() {
+        fs::read_to_string(&cache_path)
+            .ok()
+            .and_then(|c| serde_json::from_str(&c).ok())
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    let mut changed = false;
+    for name in &online {
+        if !known.iter().any(|k| k.eq_ignore_ascii_case(name)) {
+            known.push(name.clone());
+            changed = true;
+        }
+    }
+
+    if changed {
+        let json = serde_json::to_string_pretty(&known)
+            .map_err(|e| format!("Failed to serialize player cache: {}", e))?;
+        fs::write(&cache_path, json)
+            .map_err(|e| format!("Failed to write player cache: {}", e))?;
+    }
+
+    Ok(())
+}
+
+async fn resolve_player_uuid(server_path: &str, player_name: &str) -> Result<String, String> {
+    // Try usercache.json first
+    let cache_path = PathBuf::from(server_path).join("usercache.json");
+    if cache_path.exists() {
+        if let Ok(content) = fs::read_to_string(&cache_path) {
+            if let Ok(entries) = serde_json::from_str::<Vec<UserCacheEntry>>(&content) {
+                for entry in entries {
+                    if entry.name.eq_ignore_ascii_case(player_name) {
+                        return Ok(entry.uuid);
+                    }
+                }
+            }
+        }
+    }
+
+    // Fall back to Mojang API
+    let client = reqwest::Client::builder()
+        .user_agent("sprout-panel")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!(
+        "https://api.mojang.com/users/profiles/minecraft/{}",
+        player_name
+    );
+
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Mojang API error: {}", e))?;
+
+    if resp.status().is_success() {
+        let body: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+        if let Some(id) = body["id"].as_str() {
+            if id.len() == 32 {
+                let uuid = format!(
+                    "{}-{}-{}-{}-{}",
+                    &id[0..8],
+                    &id[8..12],
+                    &id[12..16],
+                    &id[16..20],
+                    &id[20..32]
+                );
+                return Ok(uuid);
+            }
+        }
+    }
+
+    Err(format!(
+        "Could not resolve UUID for player '{}'",
+        player_name
+    ))
+}
+
+#[tauri::command]
+async fn get_player_inventory(
+    _id: String,
+    path: String,
+    player_name: String,
+) -> Result<PlayerDetails, String> {
+    let uuid = resolve_player_uuid(&path, &player_name).await?;
+
+    // Try to find the player data file
+    let dat_path = PathBuf::from(&path)
+        .join("world")
+        .join("playerdata")
+        .join(format!("{}.dat", uuid));
+
+    if !dat_path.exists() {
+        return Err(format!(
+            "Player data file not found for '{}' (looked in world/playerdata/)",
+            player_name
+        ));
+    }
+
+    // Read and decompress gzip NBT
+    let file =
+        fs::File::open(&dat_path).map_err(|e| format!("Failed to open player data: {}", e))?;
+    let mut decoder = GzDecoder::new(file);
+    let mut data = Vec::new();
+    decoder
+        .read_to_end(&mut data)
+        .map_err(|e| format!("Failed to decompress player data: {}", e))?;
+
+    // Parse NBT
+    let nbt: PlayerDatNbt =
+        fastnbt::from_bytes(&data).map_err(|e| format!("Failed to parse player NBT: {}", e))?;
+
+    // Build inventory slots
+    let mut inventory = Vec::new();
+
+    // Main inventory (slots 0-35)
+    if let Some(items) = &nbt.inventory {
+        for item in items {
+            if item.id != "minecraft:air" {
+                inventory.push(InventorySlot {
+                    slot: item.slot as i32,
+                    id: item.id.clone(),
+                    count: item.count.unwrap_or(1).max(0) as u32,
+                    name: format_item_name(&item.id),
+                });
+            }
+        }
+    }
+
+    // Equipment (Pumpkin stores armor/offhand in a named compound)
+    if let Some(equip) = &nbt.equipment {
+        let equipment_map: [(i32, &Option<NbtItem>); 5] = [
+            (103, &equip.head),
+            (102, &equip.chest),
+            (101, &equip.legs),
+            (100, &equip.feet),
+            (-106, &equip.offhand),
+        ];
+        for (slot, item_opt) in equipment_map {
+            if let Some(item) = item_opt {
+                if item.id != "minecraft:air" {
+                    inventory.push(InventorySlot {
+                        slot,
+                        id: item.id.clone(),
+                        count: item.count.unwrap_or(1).max(0) as u32,
+                        name: format_item_name(&item.id),
+                    });
+                }
+            }
+        }
+    }
+
+    let game_mode = match nbt.player_game_type.unwrap_or(0) {
+        0 => "Survival",
+        1 => "Creative",
+        2 => "Adventure",
+        3 => "Spectator",
+        _ => "Unknown",
+    };
+
+    Ok(PlayerDetails {
+        name: player_name,
+        uuid,
+        health: nbt.health.unwrap_or(20.0) as f64,
+        max_health: 20.0,
+        food: nbt.food_level.unwrap_or(20).max(0) as u32,
+        xp_level: nbt.xp_level.unwrap_or(0).max(0) as u32,
+        game_mode: game_mode.to_string(),
+        inventory,
+    })
+}
+
+// ── SNBT value extractors (for parsing /data get entity responses) ──
+
+/// Strip the "Player has the following entity data: " prefix from RCON responses
+fn extract_snbt_value(response: &str) -> &str {
+    // Vanilla: "Player has the following entity data: <value>"
+    // Also handle responses like "<player> has the following entity data: <value>"
+    if let Some(idx) = response.find("following entity data: ") {
+        &response[idx + "following entity data: ".len()..]
+    } else {
+        response.trim()
+    }
+}
+
+/// Parse an SNBT number, stripping type suffixes like f, d, b, s, L
+fn parse_snbt_number(s: &str) -> f64 {
+    let s = s.trim();
+    let s = s.trim_end_matches(['f', 'd', 'b', 's', 'L']);
+    s.parse::<f64>().unwrap_or(0.0)
+}
+
+/// Parse an SNBT inventory list like [{Slot:0b,id:"minecraft:stone",count:64},...] into InventorySlots
+fn parse_snbt_inventory(snbt: &str) -> Vec<InventorySlot> {
+    let snbt = snbt.trim();
+    if snbt == "[]" || snbt.is_empty() {
+        return Vec::new();
+    }
+
+    // Strip outer brackets
+    let inner = if snbt.starts_with('[') && snbt.ends_with(']') {
+        &snbt[1..snbt.len() - 1]
+    } else {
+        snbt
+    };
+
+    // Bracket-aware split on commas between items (top-level {} groups)
+    let mut items = Vec::new();
+    let mut depth = 0i32;
+    let mut start = 0;
+    for (i, ch) in inner.char_indices() {
+        match ch {
+            '{' | '[' => depth += 1,
+            '}' | ']' => depth -= 1,
+            ',' if depth == 0 => {
+                let segment = inner[start..i].trim();
+                if !segment.is_empty() {
+                    items.push(segment);
+                }
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    let last = inner[start..].trim();
+    if !last.is_empty() {
+        items.push(last);
+    }
+
+    let mut result = Vec::new();
+    for item in items {
+        // Each item looks like {Slot:0b,id:"minecraft:stone",count:64}  or {Slot:0b,id:"minecraft:stone",Count:1b}
+        let inner_item = item.trim().trim_start_matches('{').trim_end_matches('}');
+        let mut slot: i32 = -1;
+        let mut id = String::new();
+        let mut count: u32 = 1;
+
+        // Parse key:value pairs — bracket-aware
+        let mut kv_depth = 0i32;
+        let mut kv_start = 0;
+        let pairs: Vec<&str> = {
+            let mut p = Vec::new();
+            for (i, ch) in inner_item.char_indices() {
+                match ch {
+                    '{' | '[' => kv_depth += 1,
+                    '}' | ']' => kv_depth -= 1,
+                    ',' if kv_depth == 0 => {
+                        p.push(inner_item[kv_start..i].trim());
+                        kv_start = i + 1;
+                    }
+                    _ => {}
+                }
+            }
+            p.push(inner_item[kv_start..].trim());
+            p
+        };
+
+        for pair in pairs {
+            if let Some((key, val)) = pair.split_once(':') {
+                let key = key.trim();
+                let val = val.trim();
+                match key {
+                    "Slot" => slot = parse_snbt_number(val) as i32,
+                    "id" => id = val.trim_matches('"').to_string(),
+                    "count" | "Count" => count = parse_snbt_number(val).max(0.0) as u32,
+                    _ => {}
+                }
+            }
+        }
+
+        if !id.is_empty() && id != "minecraft:air" {
+            result.push(InventorySlot {
+                slot,
+                id: id.clone(),
+                count,
+                name: format_item_name(&id),
+            });
+        }
+    }
+    result
+}
+
+/// Parse Pumpkin's equipment compound: {head:{id:"...",count:1b},chest:{...},...}
+fn parse_snbt_equipment(snbt: &str) -> Vec<InventorySlot> {
+    let snbt = snbt.trim();
+    if snbt == "{}" || snbt.is_empty() {
+        return Vec::new();
+    }
+
+    let inner = if snbt.starts_with('{') && snbt.ends_with('}') {
+        &snbt[1..snbt.len() - 1]
+    } else {
+        snbt
+    };
+
+    // Map equipment slot names to slot numbers
+    let slot_map: &[(&str, i32)] = &[
+        ("head", 103),
+        ("chest", 102),
+        ("legs", 101),
+        ("feet", 100),
+        ("offhand", -106),
+    ];
+
+    let mut result = Vec::new();
+
+    for &(slot_name, slot_num) in slot_map {
+        // Find "head:{...}" pattern
+        let pattern = format!("{}:", slot_name);
+        if let Some(start) = inner.find(&pattern) {
+            let after_key = start + pattern.len();
+            let rest = &inner[after_key..];
+            // Find the matching brace
+            if rest.starts_with('{') {
+                let mut depth = 0i32;
+                let mut end = 0;
+                for (i, ch) in rest.char_indices() {
+                    match ch {
+                        '{' => depth += 1,
+                        '}' => {
+                            depth -= 1;
+                            if depth == 0 {
+                                end = i + 1;
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                if end > 0 {
+                    let compound = &rest[1..end - 1]; // inner content without braces
+                    let mut id = String::new();
+                    let mut count: u32 = 1;
+
+                    // Parse key:value pairs
+                    let mut kv_depth = 0i32;
+                    let mut kv_start = 0;
+                    let mut pairs = Vec::new();
+                    for (i, ch) in compound.char_indices() {
+                        match ch {
+                            '{' | '[' => kv_depth += 1,
+                            '}' | ']' => kv_depth -= 1,
+                            ',' if kv_depth == 0 => {
+                                pairs.push(compound[kv_start..i].trim());
+                                kv_start = i + 1;
+                            }
+                            _ => {}
+                        }
+                    }
+                    pairs.push(compound[kv_start..].trim());
+
+                    for pair in pairs {
+                        if let Some((key, val)) = pair.split_once(':') {
+                            let key = key.trim();
+                            let val = val.trim();
+                            match key {
+                                "id" => id = val.trim_matches('"').to_string(),
+                                "count" | "Count" => {
+                                    count = parse_snbt_number(val).max(0.0) as u32
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    if !id.is_empty() && id != "minecraft:air" {
+                        result.push(InventorySlot {
+                            slot: slot_num,
+                            id: id.clone(),
+                            count,
+                            name: format_item_name(&id),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    result
+}
+
+#[tauri::command]
+async fn get_player_inventory_rcon(
+    _id: String,
+    path: String,
+    player_name: String,
+) -> Result<PlayerDetails, String> {
+    let config = parse_rcon_config(&path);
+    if !config.enabled {
+        return Err("RCON is not enabled in server.properties".to_string());
+    }
+
+    let addr = format!("127.0.0.1:{}", config.port);
+    let mut stream = rcon_connect_and_auth(&addr, &config.password).await?;
+
+    // Test if /data get entity is supported by querying Health
+    let health_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} Health", player_name),
+    )
+    .await?;
+
+    // If unsupported command, fall back: save-all then read from file
+    if health_resp.contains("Unknown or incomplete command")
+        || health_resp.contains("Unknown command")
+    {
+        // Trigger a world save
+        rcon_command(&mut stream, "save-all").await.ok();
+        drop(stream);
+        // Wait for save to flush
+        tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
+        // Use existing file-based reader
+        return get_player_inventory(_id, path, player_name).await;
+    }
+
+    let health = parse_snbt_number(extract_snbt_value(&health_resp));
+
+    // Query remaining stats
+    let food_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} foodLevel", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let food = parse_snbt_number(extract_snbt_value(&food_resp));
+
+    let xp_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} XpLevel", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let xp_level = parse_snbt_number(extract_snbt_value(&xp_resp));
+
+    let mode_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} playerGameType", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let game_type = parse_snbt_number(extract_snbt_value(&mode_resp)) as i8;
+
+    // Query inventory
+    let inv_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} Inventory", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let mut inventory = parse_snbt_inventory(extract_snbt_value(&inv_resp));
+
+    // Query equipment (Pumpkin-specific)
+    let equip_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} equipment", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let equip_val = extract_snbt_value(&equip_resp);
+    if equip_val.starts_with('{') {
+        inventory.extend(parse_snbt_equipment(equip_val));
+    }
+
+    let uuid = resolve_player_uuid(&path, &player_name).await.unwrap_or_default();
+
+    let game_mode = match game_type {
+        0 => "Survival",
+        1 => "Creative",
+        2 => "Adventure",
+        3 => "Spectator",
+        _ => "Unknown",
+    };
+
+    Ok(PlayerDetails {
+        name: player_name,
+        uuid,
+        health,
+        max_health: 20.0,
+        food: food.max(0.0) as u32,
+        xp_level: xp_level.max(0.0) as u32,
+        game_mode: game_mode.to_string(),
+        inventory,
+    })
+}
+
+#[tauri::command]
+fn get_save_interval(path: String) -> Result<u64, String> {
+    let features_path = PathBuf::from(&path).join("config").join("features.toml");
+    if !features_path.exists() {
+        return Ok(300);
+    }
+    let content = fs::read_to_string(&features_path).map_err(|e| e.to_string())?;
+    let config: FeaturesConfig = toml::from_str(&content).map_err(|e| e.to_string())?;
+    Ok(config.player_data.save_player_cron_interval)
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -653,6 +1459,12 @@ fn main() {
             list_cf_srv_records,
             create_cf_srv_record,
             delete_cf_dns_record,
+            get_known_players,
+            update_known_players,
+            get_player_inventory,
+            get_player_inventory_rcon,
+            get_rcon_config,
+            get_save_interval,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

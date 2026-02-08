@@ -52,3 +52,27 @@ export interface Server {
   configFiles: string[];
   configContent: string;
 }
+
+export interface InventorySlot {
+  slot: number;
+  id: string;
+  count: number;
+  name: string;
+}
+
+export interface RconConfig {
+  enabled: boolean;
+  port: number;
+  password: string;
+}
+
+export interface PlayerDetails {
+  name: string;
+  uuid: string;
+  health: number;
+  maxHealth: number;
+  food: number;
+  xpLevel: number;
+  gameMode: string;
+  inventory: InventorySlot[];
+}

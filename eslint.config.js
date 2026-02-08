@@ -31,6 +31,10 @@ export default [
         URLSearchParams: 'readonly',
         DragEvent: 'readonly',
         HTMLElement: 'readonly',
+        HTMLImageElement: 'readonly',
+        HTMLCanvasElement: 'readonly',
+        MouseEvent: 'readonly',
+        Event: 'readonly',
       },
     },
     plugins: {

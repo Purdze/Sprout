@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import ConsoleView from './views/ConsoleView.vue';
 import GraphsView from './views/GraphsView.vue';
 import PlayersView from './views/PlayersView.vue';
+import PlayerInventoryView from './views/PlayerInventoryView.vue';
 import ConfigView from './views/ConfigView.vue';
 import DomainsView from './views/DomainsView.vue';
 import type { Server } from '../types';
@@ -21,7 +22,10 @@ const emit = defineEmits<{
   saveConfigFile: [dir: string, file: string, content: string];
 }>();
 
-const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains'>('console');
+const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains' | 'inventory'>(
+  'console'
+);
+const selectedPlayer = ref('');
 </script>
 
 <template>
@@ -81,7 +85,7 @@ const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains'>(
         Graphs
       </button>
       <button
-        :class="['view-tab', { active: activeView === 'players' }]"
+        :class="['view-tab', { active: activeView === 'players' || activeView === 'inventory' }]"
         @click="activeView = 'players'"
       >
         Players
@@ -112,6 +116,20 @@ const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains'>(
     <PlayersView
       v-show="activeView === 'players'"
       :server="server"
+      @command="(cmd) => emit('command', cmd)"
+      @view-inventory="
+        (name) => {
+          selectedPlayer = name;
+          activeView = 'inventory';
+        }
+      "
+    />
+
+    <PlayerInventoryView
+      v-show="activeView === 'inventory'"
+      :server="server"
+      :player-name="selectedPlayer"
+      @back="activeView = 'players'"
       @command="(cmd) => emit('command', cmd)"
     />
 
@@ -242,6 +260,7 @@ const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains'>(
 .server-tab > :deep(.console-view),
 .server-tab > :deep(.graphs-view),
 .server-tab > :deep(.players-view),
+.server-tab > :deep(.inventory-view),
 .server-tab > :deep(.config-view),
 .server-tab > :deep(.domains-view) {
   flex: 1;
