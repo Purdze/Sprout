@@ -386,6 +386,7 @@ function parseLogForStats(server: Server, log: string) {
 
 .content {
   flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 

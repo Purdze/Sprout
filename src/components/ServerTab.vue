@@ -238,4 +238,13 @@ const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains'>(
   color: #f97316;
   border-bottom-color: #f97316;
 }
+
+.server-tab > :deep(.console-view),
+.server-tab > :deep(.graphs-view),
+.server-tab > :deep(.players-view),
+.server-tab > :deep(.config-view),
+.server-tab > :deep(.domains-view) {
+  flex: 1;
+  min-height: 0;
+}
 </style>

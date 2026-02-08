@@ -60,11 +60,12 @@ watch(
 .console-view {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0;
 }
 
 .logs {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 12px;
   font-family: 'Consolas', 'Monaco', monospace;
