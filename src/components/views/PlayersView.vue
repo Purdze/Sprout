@@ -1,0 +1,250 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import type { Server } from '../../types';
+
+const props = defineProps<{
+  server: Server;
+}>();
+
+const emit = defineEmits<{
+  command: [cmd: string];
+}>();
+
+const playerSearch = ref('');
+const playerViewMode = ref<'grid' | 'list'>('grid');
+
+const filteredPlayers = computed(() => {
+  const list = props.server.playerList || [];
+  if (!playerSearch.value) return list;
+  return list.filter((p) => p.toLowerCase().includes(playerSearch.value.toLowerCase()));
+});
+</script>
+
+<template>
+  <div class="players-view">
+    <div class="players-toolbar">
+      <input v-model="playerSearch" class="player-search" placeholder="Search players..." />
+      <div class="view-toggle">
+        <button
+          :class="['toggle-btn', { active: playerViewMode === 'grid' }]"
+          title="Grid view"
+          @click="playerViewMode = 'grid'"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="1" y="1" width="6" height="6" rx="1" />
+            <rect x="9" y="1" width="6" height="6" rx="1" />
+            <rect x="1" y="9" width="6" height="6" rx="1" />
+            <rect x="9" y="9" width="6" height="6" rx="1" />
+          </svg>
+        </button>
+        <button
+          :class="['toggle-btn', { active: playerViewMode === 'list' }]"
+          title="List view"
+          @click="playerViewMode = 'list'"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <rect x="1" y="2" width="14" height="3" rx="1" />
+            <rect x="1" y="7" width="14" height="3" rx="1" />
+            <rect x="1" y="12" width="14" height="3" rx="1" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div v-if="!server.playerList || server.playerList.length === 0" class="players-empty">
+      No players online
+    </div>
+    <div v-else-if="filteredPlayers.length === 0" class="players-empty">
+      No players match "{{ playerSearch }}"
+    </div>
+    <div v-else :class="['player-list', playerViewMode]">
+      <div v-for="player in filteredPlayers" :key="player" :class="['player-item', playerViewMode]">
+        <img
+          class="player-avatar"
+          :src="`https://mc-heads.net/avatar/${player}/36`"
+          :alt="player"
+        />
+        <span class="player-name">{{ player }}</span>
+        <div class="player-actions">
+          <button
+            class="player-btn kick"
+            :disabled="server.status !== 'running'"
+            @click="emit('command', `kick ${player}`)"
+          >
+            Kick
+          </button>
+          <button
+            class="player-btn ban"
+            :disabled="server.status !== 'running'"
+            @click="emit('command', `ban ${player}`)"
+          >
+            Ban
+          </button>
+          <button
+            class="player-btn banip"
+            :disabled="server.status !== 'running'"
+            @click="emit('command', `ban-ip ${player}`)"
+          >
+            Ban IP
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.players-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #0d0d0d;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.players-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.player-search {
+  flex: 1;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+}
+
+.view-toggle {
+  display: flex;
+  background: #1a1a1a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-btn:hover {
+  color: #888;
+}
+
+.toggle-btn.active {
+  background: #333;
+  color: #fff;
+}
+
+.players-empty {
+  color: #444;
+  font-style: italic;
+  text-align: center;
+  padding: 40px;
+}
+
+.player-list.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+
+.player-list.list {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.player-item.grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #1a1a1a;
+  border-radius: 8px;
+}
+
+.player-item.list {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #1a1a1a;
+  border-radius: 8px;
+}
+
+.player-item.list .player-name {
+  flex: 1;
+  text-align: left;
+}
+
+.player-item.list .player-actions {
+  flex-wrap: nowrap;
+}
+
+.player-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  image-rendering: pixelated;
+}
+
+.player-name {
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+}
+
+.player-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.player-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.player-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.player-btn.kick {
+  background: #f59e0b;
+  color: #000;
+}
+
+.player-btn.ban {
+  background: #ef4444;
+  color: #fff;
+}
+
+.player-btn.banip {
+  background: #ef4444;
+  color: #fff;
+}
+
+.player-btn:hover:not(:disabled) {
+  opacity: 0.8;
+}
+</style>

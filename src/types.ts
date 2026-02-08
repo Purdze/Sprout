@@ -1,0 +1,54 @@
+export interface Plugin {
+  name: string;
+  version: string;
+  enabled: boolean;
+}
+
+export interface CloudflareZone {
+  id: string;
+  name: string;
+}
+
+export interface CloudflareSrvData {
+  service: string;
+  proto: string;
+  name: string;
+  priority: number;
+  weight: number;
+  port: number;
+  target: string;
+}
+
+export interface CloudflareDnsRecord {
+  id: string;
+  record_type: string;
+  name: string;
+  content: string;
+  data: CloudflareSrvData | null;
+}
+
+export interface CreateSrvForm {
+  subdomain: string;
+  target: string;
+  port: number;
+}
+
+export interface Server {
+  id: string;
+  name: string;
+  path: string;
+  logs: string[];
+  status: 'stopped' | 'running' | 'starting';
+  cpu: number;
+  memory: number;
+  players: number;
+  maxPlayers: number;
+  tps: number;
+  cpuHistory: number[];
+  memoryHistory: number[];
+  tpsHistory: number[];
+  playerList: string[];
+  plugins: Plugin[];
+  configFiles: string[];
+  configContent: string;
+}
