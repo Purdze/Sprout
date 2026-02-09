@@ -21,7 +21,17 @@ const isOnline = computed(() => props.server.playerList?.includes(props.playerNa
 const loading = ref(false);
 const error = ref('');
 const player = ref<PlayerDetails | null>(null);
-const saveInterval = ref(300);
+const activeTab = ref<'inventory' | 'enderchest'>('inventory');
+const lastRefreshed = ref('');
+
+function updateLastRefreshed() {
+  lastRefreshed.value = new Date().toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+}
 
 async function fetchInventory() {
   const result = await invoke<PlayerDetails>('get_player_inventory', {
@@ -30,6 +40,7 @@ async function fetchInventory() {
     playerName: props.playerName,
   });
   player.value = result;
+  updateLastRefreshed();
 }
 
 async function refresh() {
@@ -40,12 +51,8 @@ async function refresh() {
   }
 }
 
-function formatInterval(seconds: number): string {
-  if (seconds >= 60) {
-    const mins = Math.round(seconds / 60);
-    return `${mins} minute${mins !== 1 ? 's' : ''}`;
-  }
-  return `${seconds} second${seconds !== 1 ? 's' : ''}`;
+function delayedRefresh() {
+  window.setTimeout(refresh, 500);
 }
 
 async function loadPlayer() {
@@ -54,13 +61,6 @@ async function loadPlayer() {
   error.value = '';
   try {
     await fetchInventory();
-    try {
-      saveInterval.value = await invoke<number>('get_save_interval', {
-        path: serverPath.value,
-      });
-    } catch {
-      saveInterval.value = 300;
-    }
   } catch (e) {
     error.value = String(e);
   } finally {
@@ -116,6 +116,56 @@ function onIconError(e: Event) {
 const armorSlots = [103, 102, 101, 100];
 const mainSlots = computed(() => Array.from({ length: 27 }, (_, i) => i + 9));
 const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
+const enderSlots = computed(() => Array.from({ length: 27 }, (_, i) => i));
+
+function getEnderSlotItem(slotNum: number) {
+  if (!player.value) return null;
+  return player.value.enderChest.find((s) => s.slot === slotNum) || null;
+}
+
+function formatDimension(dim: string): string {
+  const name = dim.replace('minecraft:', '');
+  switch (name) {
+    case 'overworld':
+      return 'Overworld';
+    case 'the_nether':
+      return 'The Nether';
+    case 'the_end':
+      return 'The End';
+    default:
+      return formatItemName(dim);
+  }
+}
+
+function formatPosition(x: number, y: number, z: number): string {
+  return `${Math.floor(x)}, ${Math.floor(y)}, ${Math.floor(z)}`;
+}
+
+function formatPlaytime(ticks: number): string {
+  const totalSeconds = Math.floor(ticks / 20);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${totalSeconds}s`;
+}
+
+function formatKdr(kills: number, deaths: number): string {
+  if (deaths === 0) return kills > 0 ? `${kills}.0` : '0.0';
+  return (kills / deaths).toFixed(1);
+}
+
+function formatDistance(cm: number): string {
+  const blocks = Math.floor(cm / 100);
+  if (blocks >= 1000) return `${(blocks / 1000).toFixed(1)}k`;
+  return blocks.toLocaleString();
+}
+
+function formatCount(n: number): string {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return n.toLocaleString();
+}
 </script>
 
 <template>
@@ -151,19 +201,87 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
         </h2>
         <div v-if="player" class="player-stats">
           <span class="pstat health"
-            ><span class="pstat-icon">&#9829;</span> {{ player.health.toFixed(0) }}/{{
-              player.maxHealth.toFixed(0)
-            }}</span
+            ><img
+              class="pstat-mc-icon"
+              src="https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/gui/sprites/hud/heart/full.png"
+              alt="Health"
+            />
+            {{ player.health.toFixed(0) }}/{{ player.maxHealth.toFixed(0) }}</span
           >
           <span class="pstat food"
-            ><span class="pstat-icon">&#9830;</span> {{ player.food }}/20</span
+            ><img
+              class="pstat-mc-icon"
+              src="https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/gui/sprites/hud/food_full.png"
+              alt="Food"
+            />
+            {{ player.food }}/20</span
           >
           <span class="pstat xp"
-            ><span class="pstat-icon">&#9733;</span> Lvl {{ player.xpLevel }}</span
+            ><img
+              class="pstat-mc-icon"
+              src="https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/item/experience_bottle.png"
+              alt="XP"
+            />
+            Lvl {{ player.xpLevel }}</span
           >
-          <span class="pstat mode">{{ player.gameMode }}</span>
+        </div>
+        <div v-if="player" class="header-actions">
+          <button
+            class="act-btn neutral"
+            :disabled="serverStatus !== 'running'"
+            @click="emit('command', `whitelist add ${playerName}`)"
+          >
+            Whitelist
+          </button>
+          <button
+            v-if="!player.isOp"
+            class="act-btn neutral"
+            :disabled="serverStatus !== 'running'"
+            @click="
+              emit('command', `op ${playerName}`);
+              delayedRefresh();
+            "
+          >
+            Op
+          </button>
+          <button
+            v-else
+            class="act-btn neutral"
+            :disabled="serverStatus !== 'running'"
+            @click="
+              emit('command', `deop ${playerName}`);
+              delayedRefresh();
+            "
+          >
+            Deop
+          </button>
+          <button
+            class="act-btn warn"
+            :disabled="serverStatus !== 'running' || !isOnline"
+            @click="
+              emit('command', `kick ${playerName}`);
+              emit('back');
+            "
+          >
+            Kick
+          </button>
+          <button
+            class="act-btn danger"
+            :disabled="serverStatus !== 'running'"
+            @click="emit('command', `ban ${playerName}`)"
+          >
+            Ban
+          </button>
+          <button
+            class="act-btn danger"
+            :disabled="serverStatus !== 'running'"
+            @click="emit('command', `ban-ip ${playerName}`)"
+          >
+            Ban IP
+          </button>
         </div>
       </div>
+      <span v-if="lastRefreshed" class="last-refreshed">{{ lastRefreshed }}</span>
       <button class="refresh-btn" :disabled="loading" title="Refresh inventory" @click="refresh">
         <svg
           width="14"
@@ -187,129 +305,210 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
 
     <!-- Inventory -->
     <div v-else-if="player" class="panel-body">
-      <div class="inv-layout">
-        <div class="inv-main">
-          <div class="section-label">Inventory</div>
-          <div class="inv-grid">
-            <div
-              v-for="s in mainSlots"
-              :key="s"
-              :class="['inv-cell', { empty: !getSlotItem(s) }]"
-              :title="getSlotItem(s) ? formatItemName(getSlotItem(s)!.id) : ''"
-            >
-              <template v-if="getSlotItem(s)">
-                <img
-                  class="item-icon"
-                  :src="itemIconUrl(getSlotItem(s)!.id)"
-                  :alt="getSlotItem(s)!.name"
-                  @error="onIconError"
-                />
-                <span class="cell-fallback" style="display: none">{{
-                  formatItemName(getSlotItem(s)!.id)
-                }}</span>
-                <span v-if="getSlotItem(s)!.count > 1" class="cell-count">{{
-                  getSlotItem(s)!.count
-                }}</span>
-              </template>
+      <!-- Tab bar -->
+      <div class="tab-bar">
+        <button
+          :class="['tab-btn', { active: activeTab === 'inventory' }]"
+          @click="activeTab = 'inventory'"
+        >
+          Inventory
+        </button>
+        <button
+          :class="['tab-btn', { active: activeTab === 'enderchest' }]"
+          @click="activeTab = 'enderchest'"
+        >
+          Ender Chest
+        </button>
+      </div>
+
+      <!-- Stats grid -->
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">Playtime</span>
+          <span class="stat-value">{{ formatPlaytime(player.playtimeTicks) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">World</span>
+          <span class="stat-value">{{ formatDimension(player.dimension) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Position</span>
+          <span class="stat-value">{{
+            formatPosition(player.posX, player.posY, player.posZ)
+          }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Gamemode</span>
+          <span class="stat-value">{{ player.gameMode }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Last Slept</span>
+          <span class="stat-value">{{ player.lastSlept ?? 'None' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Last Death</span>
+          <span class="stat-value">{{ player.lastDeath ?? 'None' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">KDR</span>
+          <span class="stat-value">{{ formatKdr(player.playerKills, player.deaths) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Deaths</span>
+          <span class="stat-value">{{ player.deaths }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Items Picked Up</span>
+          <span class="stat-value">{{ formatCount(player.itemsPickedUp) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Items Used</span>
+          <span class="stat-value">{{ formatCount(player.itemsUsed) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Mobs Killed</span>
+          <span class="stat-value">{{ formatCount(player.mobKills) }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Distance</span>
+          <span class="stat-value">{{ formatDistance(player.distanceCm) }} blocks</span>
+        </div>
+      </div>
+
+      <!-- Inventory tab -->
+      <template v-if="activeTab === 'inventory'">
+        <div class="inv-row">
+          <div class="inv-main">
+            <div class="section-label">Inventory</div>
+            <div class="inv-grid">
+              <div
+                v-for="s in mainSlots"
+                :key="s"
+                :class="['inv-cell', { empty: !getSlotItem(s) }]"
+                :title="getSlotItem(s) ? formatItemName(getSlotItem(s)!.id) : ''"
+              >
+                <template v-if="getSlotItem(s)">
+                  <img
+                    class="item-icon"
+                    :src="itemIconUrl(getSlotItem(s)!.id)"
+                    :alt="getSlotItem(s)!.name"
+                    @error="onIconError"
+                  />
+                  <span class="cell-fallback" style="display: none">{{
+                    formatItemName(getSlotItem(s)!.id)
+                  }}</span>
+                  <span v-if="getSlotItem(s)!.count > 1" class="cell-count">{{
+                    getSlotItem(s)!.count
+                  }}</span>
+                </template>
+              </div>
             </div>
           </div>
-
-          <div class="section-label">Hotbar</div>
-          <div class="inv-grid">
-            <div
-              v-for="s in hotbar"
-              :key="s"
-              :class="['inv-cell', { empty: !getSlotItem(s) }]"
-              :title="getSlotItem(s) ? formatItemName(getSlotItem(s)!.id) : ''"
-            >
-              <template v-if="getSlotItem(s)">
-                <img
-                  class="item-icon"
-                  :src="itemIconUrl(getSlotItem(s)!.id)"
-                  :alt="getSlotItem(s)!.name"
-                  @error="onIconError"
-                />
-                <span class="cell-fallback" style="display: none">{{
-                  formatItemName(getSlotItem(s)!.id)
-                }}</span>
-                <span v-if="getSlotItem(s)!.count > 1" class="cell-count">{{
-                  getSlotItem(s)!.count
-                }}</span>
-              </template>
+          <div class="inv-equip">
+            <div class="section-label">Armor</div>
+            <div class="equip-cells">
+              <div
+                v-for="slot in armorSlots"
+                :key="slot"
+                :class="['equip-cell', { empty: !getSlotItem(slot) }]"
+                :title="getSlotItem(slot) ? formatItemName(getSlotItem(slot)!.id) : ''"
+              >
+                <template v-if="getSlotItem(slot)">
+                  <img
+                    class="item-icon"
+                    :src="itemIconUrl(getSlotItem(slot)!.id)"
+                    :alt="getSlotItem(slot)!.name"
+                    @error="onIconError"
+                  />
+                  <span class="cell-fallback" style="display: none"></span>
+                  <span v-if="getSlotItem(slot)!.count > 1" class="cell-count">{{
+                    getSlotItem(slot)!.count
+                  }}</span>
+                </template>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="inv-equip">
-          <div class="section-label">Armor</div>
+        <div class="inv-row">
+          <div class="inv-main">
+            <div class="section-label">Hotbar</div>
+            <div class="inv-grid">
+              <div
+                v-for="s in hotbar"
+                :key="s"
+                :class="['inv-cell', { empty: !getSlotItem(s) }]"
+                :title="getSlotItem(s) ? formatItemName(getSlotItem(s)!.id) : ''"
+              >
+                <template v-if="getSlotItem(s)">
+                  <img
+                    class="item-icon"
+                    :src="itemIconUrl(getSlotItem(s)!.id)"
+                    :alt="getSlotItem(s)!.name"
+                    @error="onIconError"
+                  />
+                  <span class="cell-fallback" style="display: none">{{
+                    formatItemName(getSlotItem(s)!.id)
+                  }}</span>
+                  <span v-if="getSlotItem(s)!.count > 1" class="cell-count">{{
+                    getSlotItem(s)!.count
+                  }}</span>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="inv-equip">
+            <div class="section-label">Offhand</div>
+            <div class="equip-cells">
+              <div
+                :class="['equip-cell', { empty: !getSlotItem(-106) }]"
+                :title="getSlotItem(-106) ? formatItemName(getSlotItem(-106)!.id) : ''"
+              >
+                <template v-if="getSlotItem(-106)">
+                  <img
+                    class="item-icon"
+                    :src="itemIconUrl(getSlotItem(-106)!.id)"
+                    :alt="getSlotItem(-106)!.name"
+                    @error="onIconError"
+                  />
+                  <span class="cell-fallback" style="display: none"></span>
+                  <span v-if="getSlotItem(-106)!.count > 1" class="cell-count">{{
+                    getSlotItem(-106)!.count
+                  }}</span>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Ender Chest tab -->
+      <template v-if="activeTab === 'enderchest'">
+        <div class="section-label">Ender Chest</div>
+        <div class="inv-grid">
           <div
-            v-for="(slot, i) in armorSlots"
-            :key="slot"
-            :class="['equip-cell', { empty: !getSlotItem(slot) }]"
+            v-for="s in enderSlots"
+            :key="s"
+            :class="['inv-cell', { empty: !getEnderSlotItem(s) }]"
+            :title="getEnderSlotItem(s) ? formatItemName(getEnderSlotItem(s)!.id) : ''"
           >
-            <span class="equip-slot-label">{{
-              ['Helmet', 'Chestplate', 'Leggings', 'Boots'][i]
-            }}</span>
-            <template v-if="getSlotItem(slot)">
-              <div class="equip-item-row">
-                <img
-                  class="item-icon-sm"
-                  :src="itemIconUrl(getSlotItem(slot)!.id)"
-                  :alt="getSlotItem(slot)!.name"
-                  @error="onIconError"
-                />
-                <span class="cell-fallback" style="display: none"></span>
-                <span class="equip-item">{{ formatItemName(getSlotItem(slot)!.id) }}</span>
-              </div>
-            </template>
-          </div>
-          <div class="section-label offhand-label">Offhand</div>
-          <div :class="['equip-cell', { empty: !getSlotItem(-106) }]">
-            <span class="equip-slot-label">Offhand</span>
-            <template v-if="getSlotItem(-106)">
-              <div class="equip-item-row">
-                <img
-                  class="item-icon-sm"
-                  :src="itemIconUrl(getSlotItem(-106)!.id)"
-                  :alt="getSlotItem(-106)!.name"
-                  @error="onIconError"
-                />
-                <span class="cell-fallback" style="display: none"></span>
-                <span class="equip-item">{{ formatItemName(getSlotItem(-106)!.id) }}</span>
-              </div>
+            <template v-if="getEnderSlotItem(s)">
+              <img
+                class="item-icon"
+                :src="itemIconUrl(getEnderSlotItem(s)!.id)"
+                :alt="getEnderSlotItem(s)!.name"
+                @error="onIconError"
+              />
+              <span class="cell-fallback" style="display: none">{{
+                formatItemName(getEnderSlotItem(s)!.id)
+              }}</span>
+              <span v-if="getEnderSlotItem(s)!.count > 1" class="cell-count">{{
+                getEnderSlotItem(s)!.count
+              }}</span>
             </template>
           </div>
         </div>
-      </div>
-
-      <div class="save-notice">
-        Inventory data saves every {{ formatInterval(saveInterval) }}
-        <span class="notice-src">(features.toml)</span>
-      </div>
-
-      <!-- Actions -->
-      <div class="inv-actions">
-        <button
-          class="act-btn kick"
-          :disabled="serverStatus !== 'running' || !isOnline"
-          @click="
-            emit('command', `kick ${playerName}`);
-            emit('back');
-          "
-        >
-          Kick
-        </button>
-        <button
-          class="act-btn ban"
-          :disabled="serverStatus !== 'running' || !isOnline"
-          @click="
-            emit('command', `ban ${playerName}`);
-            emit('back');
-          "
-        >
-          Ban
-        </button>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -408,25 +607,22 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
   gap: 4px;
 }
 
-.pstat-icon {
-  font-size: 12px;
-}
-
-.pstat.health .pstat-icon {
-  color: #ef4444;
-}
-
-.pstat.food .pstat-icon {
-  color: #f59e0b;
-}
-
-.pstat.xp .pstat-icon {
-  color: #4ade80;
+.pstat-mc-icon {
+  width: 14px;
+  height: 14px;
+  image-rendering: pixelated;
+  object-fit: contain;
 }
 
 .pstat.mode {
   color: #555;
   font-style: italic;
+}
+
+.last-refreshed {
+  font-size: 11px;
+  color: #444;
+  white-space: nowrap;
 }
 
 .refresh-btn {
@@ -471,16 +667,81 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
   color: #ef4444;
 }
 
-/* Inventory layout */
-.inv-layout {
+/* Tab bar */
+.tab-bar {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 10px;
+}
+
+.tab-btn {
+  padding: 6px 16px;
+  background: none;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover {
+  color: #aaa;
+  border-color: #444;
+}
+
+.tab-btn.active {
+  background: #1a1a1a;
+  color: #f97316;
+  border-color: #f97316;
+}
+
+/* Stats grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.stat-item {
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  font-size: 13px;
+  color: #ccc;
+  font-weight: 500;
+}
+
+/* Inventory layout */
+.inv-row {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+  margin-bottom: 8px;
 }
 
 .inv-main {
-  flex: 1;
-  min-width: 0;
+  grid-column: span 9;
+  display: flex;
+  flex-direction: column;
 }
 
 .section-label {
@@ -491,23 +752,18 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
   margin-bottom: 6px;
 }
 
-.offhand-label {
-  margin-top: 10px;
-}
-
 /* 9-column grid */
 .inv-grid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: 3px;
 }
 
 /* Inventory cell */
 .inv-cell {
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
-  border-radius: 4px;
+  border-radius: 3px;
   aspect-ratio: 1;
   display: flex;
   align-items: center;
@@ -529,14 +785,6 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
   image-rendering: pixelated;
 }
 
-.item-icon-sm {
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
-  image-rendering: pixelated;
-  flex-shrink: 0;
-}
-
 /* Text fallback when icon fails */
 .cell-fallback {
   font-size: 9px;
@@ -550,9 +798,9 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
 /* Stack count */
 .cell-count {
   position: absolute;
-  bottom: 1px;
-  right: 3px;
-  font-size: 11px;
+  bottom: 0;
+  right: 2px;
+  font-size: 10px;
   font-weight: 700;
   color: #fff;
   text-shadow:
@@ -565,16 +813,28 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
 
 /* Equipment column */
 .inv-equip {
-  width: 140px;
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: 6px;
+}
+
+.equip-cells {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
 }
 
 .equip-cell {
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  padding: 8px 10px;
-  margin-bottom: 4px;
+  border-radius: 3px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
 }
 
 .equip-cell.empty {
@@ -582,60 +842,27 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
   border-color: #1e1e1e;
 }
 
-.equip-slot-label {
-  display: block;
-  font-size: 10px;
-  color: #555;
-}
-
-.equip-item-row {
+/* Header actions */
+.header-actions {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 3px;
-}
-
-.equip-item {
-  font-size: 12px;
-  color: #ccc;
-}
-
-/* Save Notice */
-.save-notice {
-  font-size: 11px;
-  color: #444;
-  margin-top: 14px;
-  padding: 8px 10px;
-  background: #161616;
-  border-radius: 6px;
-  border: 1px solid #222;
-}
-
-.notice-src {
-  color: #555;
-}
-
-/* Actions */
-.inv-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid #2a2a2a;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
 }
 
 .act-btn {
-  padding: 7px 18px;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  font-size: 11px;
   cursor: pointer;
   font-weight: 500;
-  transition: opacity 0.15s;
+  background: none;
+  transition: all 0.15s;
 }
 
 .act-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
@@ -643,13 +870,32 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
   opacity: 0.85;
 }
 
-.act-btn.kick {
-  background: #f59e0b;
-  color: #000;
+.act-btn.neutral {
+  color: #999;
+  border-color: #333;
 }
 
-.act-btn.ban {
-  background: #ef4444;
+.act-btn.neutral:hover:not(:disabled) {
   color: #fff;
+  border-color: #555;
+  background: #2a2a2a;
+}
+
+.act-btn.warn {
+  color: #f59e0b;
+  border-color: #f59e0b44;
+}
+
+.act-btn.warn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.act-btn.danger {
+  color: #ef4444;
+  border-color: #ef444444;
+}
+
+.act-btn.danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
 }
 </style>

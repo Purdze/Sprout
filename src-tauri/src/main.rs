@@ -73,8 +73,24 @@ struct PlayerDatNbt {
     player_game_type: Option<i8>,
     #[serde(rename = "Inventory", default)]
     inventory: Option<Vec<NbtInventoryItem>>,
+    #[serde(rename = "EnderItems", default)]
+    ender_items: Option<Vec<NbtInventoryItem>>,
     #[serde(default)]
     equipment: Option<NbtEquipment>,
+    #[serde(rename = "Dimension", default)]
+    dimension: Option<String>,
+    #[serde(rename = "Pos", default)]
+    pos: Option<Vec<f64>>,
+    #[serde(rename = "SpawnX", default)]
+    spawn_x: Option<i32>,
+    #[serde(rename = "SpawnY", default)]
+    spawn_y: Option<i32>,
+    #[serde(rename = "SpawnZ", default)]
+    spawn_z: Option<i32>,
+    #[serde(rename = "SpawnDimension", default)]
+    spawn_dimension: Option<String>,
+    #[serde(rename = "LastDeathLocation", default)]
+    last_death_location: Option<NbtDeathLocation>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -101,6 +117,28 @@ struct NbtEquipment {
 }
 
 #[derive(Debug, serde::Deserialize)]
+struct NbtDeathLocation {
+    dimension: Option<String>,
+    pos: Option<Vec<i32>>,
+}
+
+// Stats file deserialization (world/stats/{uuid}.json)
+#[derive(Debug, serde::Deserialize)]
+struct StatsFile {
+    stats: Option<StatsCategories>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct StatsCategories {
+    #[serde(rename = "minecraft:custom", default)]
+    custom: Option<HashMap<String, u64>>,
+    #[serde(rename = "minecraft:picked_up", default)]
+    picked_up: Option<HashMap<String, u64>>,
+    #[serde(rename = "minecraft:used", default)]
+    used: Option<HashMap<String, u64>>,
+}
+
+#[derive(Debug, serde::Deserialize)]
 struct NbtItem {
     id: String,
     #[serde(default)]
@@ -119,6 +157,21 @@ pub struct PlayerDetails {
     pub xp_level: u32,
     pub game_mode: String,
     pub inventory: Vec<InventorySlot>,
+    pub ender_chest: Vec<InventorySlot>,
+    pub dimension: String,
+    pub pos_x: f64,
+    pub pos_y: f64,
+    pub pos_z: f64,
+    pub last_slept: Option<String>,
+    pub last_death: Option<String>,
+    pub playtime_ticks: u64,
+    pub deaths: u32,
+    pub player_kills: u32,
+    pub mob_kills: u32,
+    pub items_picked_up: u64,
+    pub items_used: u64,
+    pub distance_cm: u64,
+    pub is_op: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -912,6 +965,126 @@ fn format_item_name(id: &str) -> String {
         .join(" ")
 }
 
+fn format_dimension(dim: &str) -> String {
+    let name = dim.trim_start_matches("minecraft:");
+    match name {
+        "overworld" => "Overworld".to_string(),
+        "the_nether" => "The Nether".to_string(),
+        "the_end" => "The End".to_string(),
+        _ => format_item_name(dim),
+    }
+}
+
+fn format_location(x: i32, y: i32, z: i32, dim: &str) -> String {
+    format!("{}, {}, {} ({})", x, y, z, format_dimension(dim))
+}
+
+struct PlayerStats {
+    playtime_ticks: u64,
+    deaths: u32,
+    player_kills: u32,
+    mob_kills: u32,
+    items_picked_up: u64,
+    items_used: u64,
+    distance_cm: u64,
+}
+
+fn read_player_stats(server_path: &str, uuid: &str) -> PlayerStats {
+    let zero = PlayerStats {
+        playtime_ticks: 0,
+        deaths: 0,
+        player_kills: 0,
+        mob_kills: 0,
+        items_picked_up: 0,
+        items_used: 0,
+        distance_cm: 0,
+    };
+
+    let stats_path = PathBuf::from(server_path)
+        .join("world")
+        .join("stats")
+        .join(format!("{}.json", uuid));
+
+    if !stats_path.exists() {
+        return zero;
+    }
+
+    let content = match fs::read_to_string(&stats_path) {
+        Ok(c) => c,
+        Err(_) => return zero,
+    };
+
+    let stats: StatsFile = match serde_json::from_str(&content) {
+        Ok(s) => s,
+        Err(_) => return zero,
+    };
+
+    let categories = match stats.stats {
+        Some(c) => c,
+        None => return zero,
+    };
+
+    let custom = categories.custom.unwrap_or_default();
+
+    let playtime_ticks = custom
+        .get("minecraft:play_time")
+        .or_else(|| custom.get("minecraft:play_one_minute"))
+        .copied()
+        .unwrap_or(0);
+    let deaths = custom.get("minecraft:deaths").copied().unwrap_or(0) as u32;
+    let player_kills = custom.get("minecraft:player_kills").copied().unwrap_or(0) as u32;
+    let mob_kills = custom.get("minecraft:mob_kills").copied().unwrap_or(0) as u32;
+
+    let distance_cm: u64 = custom
+        .iter()
+        .filter(|(k, _)| k.ends_with("_one_cm"))
+        .map(|(_, v)| v)
+        .sum();
+
+    let items_picked_up: u64 = categories
+        .picked_up
+        .as_ref()
+        .map(|m| m.values().sum())
+        .unwrap_or(0);
+
+    let items_used: u64 = categories
+        .used
+        .as_ref()
+        .map(|m| m.values().sum())
+        .unwrap_or(0);
+
+    PlayerStats {
+        playtime_ticks,
+        deaths,
+        player_kills,
+        mob_kills,
+        items_picked_up,
+        items_used,
+        distance_cm,
+    }
+}
+
+fn is_player_op(server_path: &str, player_name: &str) -> bool {
+    let ops_path = PathBuf::from(server_path).join("data").join("ops.json");
+    if !ops_path.exists() {
+        return false;
+    }
+    let content = match fs::read_to_string(&ops_path) {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
+    let entries: Vec<serde_json::Value> = match serde_json::from_str(&content) {
+        Ok(e) => e,
+        Err(_) => return false,
+    };
+    entries.iter().any(|e| {
+        e.get("name")
+            .and_then(|n| n.as_str())
+            .map(|n| n.eq_ignore_ascii_case(player_name))
+            .unwrap_or(false)
+    })
+}
+
 fn sprout_players_path(server_id: &str) -> PathBuf {
     get_server_data_dir(server_id).join("known_players.json")
 }
@@ -1088,6 +1261,21 @@ async fn get_player_inventory(
         }
     }
 
+    // Build ender chest slots
+    let mut ender_chest = Vec::new();
+    if let Some(items) = &nbt.ender_items {
+        for item in items {
+            if item.id != "minecraft:air" {
+                ender_chest.push(InventorySlot {
+                    slot: item.slot as i32,
+                    id: item.id.clone(),
+                    count: item.count.unwrap_or(1).max(0) as u32,
+                    name: format_item_name(&item.id),
+                });
+            }
+        }
+    }
+
     let game_mode = match nbt.player_game_type.unwrap_or(0) {
         0 => "Survival",
         1 => "Creative",
@@ -1095,6 +1283,39 @@ async fn get_player_inventory(
         3 => "Spectator",
         _ => "Unknown",
     };
+
+    // Extract position
+    let (pos_x, pos_y, pos_z) = match &nbt.pos {
+        Some(p) if p.len() >= 3 => (p[0], p[1], p[2]),
+        _ => (0.0, 0.0, 0.0),
+    };
+
+    // Extract dimension
+    let dimension = nbt.dimension.clone().unwrap_or_else(|| "minecraft:overworld".to_string());
+
+    // Last slept (spawn point set by bed)
+    let last_slept = match (nbt.spawn_x, nbt.spawn_y, nbt.spawn_z) {
+        (Some(x), Some(y), Some(z)) => {
+            let dim = nbt.spawn_dimension.as_deref().unwrap_or("minecraft:overworld");
+            Some(format_location(x, y, z, dim))
+        }
+        _ => None,
+    };
+
+    // Last death location
+    let last_death = nbt.last_death_location.as_ref().and_then(|loc| {
+        let dim = loc.dimension.as_deref()?;
+        let pos = loc.pos.as_ref()?;
+        if pos.len() >= 3 {
+            Some(format_location(pos[0], pos[1], pos[2], dim))
+        } else {
+            None
+        }
+    });
+
+    // Stats from file
+    let stats = read_player_stats(&path, &uuid);
+    let is_op = is_player_op(&path, &player_name);
 
     Ok(PlayerDetails {
         name: player_name,
@@ -1105,6 +1326,21 @@ async fn get_player_inventory(
         xp_level: nbt.xp_level.unwrap_or(0).max(0) as u32,
         game_mode: game_mode.to_string(),
         inventory,
+        ender_chest,
+        dimension,
+        pos_x,
+        pos_y,
+        pos_z,
+        last_slept,
+        last_death,
+        playtime_ticks: stats.playtime_ticks,
+        deaths: stats.deaths,
+        player_kills: stats.player_kills,
+        mob_kills: stats.mob_kills,
+        items_picked_up: stats.items_picked_up,
+        items_used: stats.items_used,
+        distance_cm: stats.distance_cm,
+        is_op,
     })
 }
 
@@ -1399,7 +1635,103 @@ async fn get_player_inventory_rcon(
         inventory.extend(parse_snbt_equipment(equip_val));
     }
 
+    // Query ender chest
+    let ender_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} EnderItems", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let ender_chest = parse_snbt_inventory(extract_snbt_value(&ender_resp));
+
+    // Query dimension
+    let dim_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} Dimension", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let dimension = {
+        let raw = extract_snbt_value(&dim_resp);
+        let trimmed = raw.trim().trim_matches('"');
+        if trimmed.is_empty() {
+            "minecraft:overworld".to_string()
+        } else {
+            trimmed.to_string()
+        }
+    };
+
+    // Query position
+    let pos_resp = rcon_command(
+        &mut stream,
+        &format!("data get entity {} Pos", player_name),
+    )
+    .await
+    .unwrap_or_default();
+    let (pos_x, pos_y, pos_z) = {
+        let raw = extract_snbt_value(&pos_resp)
+            .trim()
+            .trim_start_matches('[')
+            .trim_end_matches(']');
+        let parts: Vec<f64> = raw.split(',').map(|s| parse_snbt_number(s)).collect();
+        (
+            parts.first().copied().unwrap_or(0.0),
+            parts.get(1).copied().unwrap_or(0.0),
+            parts.get(2).copied().unwrap_or(0.0),
+        )
+    };
+
+    // Query spawn point (bed location)
+    let spawn_x_resp = rcon_command(&mut stream, &format!("data get entity {} SpawnX", player_name)).await.unwrap_or_default();
+    let spawn_y_resp = rcon_command(&mut stream, &format!("data get entity {} SpawnY", player_name)).await.unwrap_or_default();
+    let spawn_z_resp = rcon_command(&mut stream, &format!("data get entity {} SpawnZ", player_name)).await.unwrap_or_default();
+    let spawn_dim_resp = rcon_command(&mut stream, &format!("data get entity {} SpawnDimension", player_name)).await.unwrap_or_default();
+
+    let last_slept = {
+        let sx = parse_snbt_number(extract_snbt_value(&spawn_x_resp));
+        let sy = parse_snbt_number(extract_snbt_value(&spawn_y_resp));
+        let sz = parse_snbt_number(extract_snbt_value(&spawn_z_resp));
+        let sd = extract_snbt_value(&spawn_dim_resp).trim().trim_matches('"').to_string();
+        // If all coords are 0 and dimension is empty, there's no spawn set
+        if sd.is_empty() && sx == 0.0 && sy == 0.0 && sz == 0.0 {
+            None
+        } else {
+            let dim = if sd.is_empty() { "minecraft:overworld" } else { &sd };
+            Some(format_location(sx as i32, sy as i32, sz as i32, dim))
+        }
+    };
+
     let uuid = resolve_player_uuid(&path, &player_name).await.unwrap_or_default();
+
+    // Stats from file (RCON doesn't expose stats directly)
+    let stats = read_player_stats(&path, &uuid);
+
+    // Last death from file as well (complex SNBT compound)
+    let last_death = {
+        let dat_path = PathBuf::from(&path)
+            .join("world")
+            .join("playerdata")
+            .join(format!("{}.dat", uuid));
+        if dat_path.exists() {
+            fs::File::open(&dat_path).ok().and_then(|file| {
+                let mut decoder = GzDecoder::new(file);
+                let mut data = Vec::new();
+                decoder.read_to_end(&mut data).ok()?;
+                let nbt: PlayerDatNbt = fastnbt::from_bytes(&data).ok()?;
+                nbt.last_death_location.as_ref().and_then(|loc| {
+                    let dim = loc.dimension.as_deref()?;
+                    let pos = loc.pos.as_ref()?;
+                    if pos.len() >= 3 {
+                        Some(format_location(pos[0], pos[1], pos[2], dim))
+                    } else {
+                        None
+                    }
+                })
+            })
+        } else {
+            None
+        }
+    };
 
     let game_mode = match game_type {
         0 => "Survival",
@@ -1408,6 +1740,7 @@ async fn get_player_inventory_rcon(
         3 => "Spectator",
         _ => "Unknown",
     };
+    let is_op = is_player_op(&path, &player_name);
 
     Ok(PlayerDetails {
         name: player_name,
@@ -1418,6 +1751,21 @@ async fn get_player_inventory_rcon(
         xp_level: xp_level.max(0.0) as u32,
         game_mode: game_mode.to_string(),
         inventory,
+        ender_chest,
+        dimension,
+        pos_x,
+        pos_y,
+        pos_z,
+        last_slept,
+        last_death,
+        playtime_ticks: stats.playtime_ticks,
+        deaths: stats.deaths,
+        player_kills: stats.player_kills,
+        mob_kills: stats.mob_kills,
+        items_picked_up: stats.items_picked_up,
+        items_used: stats.items_used,
+        distance_cm: stats.distance_cm,
+        is_op,
     })
 }
 

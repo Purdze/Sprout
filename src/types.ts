@@ -75,4 +75,19 @@ export interface PlayerDetails {
   xpLevel: number;
   gameMode: string;
   inventory: InventorySlot[];
+  enderChest: InventorySlot[];
+  dimension: string;
+  posX: number;
+  posY: number;
+  posZ: number;
+  lastSlept: string | null;
+  lastDeath: string | null;
+  playtimeTicks: number;
+  deaths: number;
+  playerKills: number;
+  mobKills: number;
+  itemsPickedUp: number;
+  itemsUsed: number;
+  distanceCm: number;
+  isOp: boolean;
 }
