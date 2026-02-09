@@ -11,7 +11,7 @@ use std::sync::Mutex;
 use sysinfo::{Pid, System};
 use flate2::read::GzDecoder;
 use std::io::Read;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use futures_util::StreamExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -425,11 +425,19 @@ async fn start_server(
         return Err(format!("Server executable not found at {:?}", exe_path));
     }
 
-    let mut child = Command::new(&exe_path)
-        .current_dir(&server_path)
+    let mut cmd = Command::new(&exe_path);
+    cmd.current_dir(&server_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .stdin(Stdio::piped())
+        .stdin(Stdio::piped());
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to start server: {}", e))?;
 
@@ -1780,6 +1788,33 @@ fn get_save_interval(path: String) -> Result<u64, String> {
     Ok(config.player_data.save_player_cron_interval)
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct WindowState {
+    width: f64,
+    height: f64,
+    x: i32,
+    y: i32,
+}
+
+fn window_state_path() -> PathBuf {
+    let dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("sprout");
+    let _ = fs::create_dir_all(&dir);
+    dir.join("window-state.json")
+}
+
+fn load_window_state() -> Option<WindowState> {
+    let data = fs::read_to_string(window_state_path()).ok()?;
+    serde_json::from_str(&data).ok()
+}
+
+fn save_window_state(state: &WindowState) {
+    if let Ok(json) = serde_json::to_string(state) {
+        let _ = fs::write(window_state_path(), json);
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -1787,6 +1822,34 @@ fn main() {
         .manage(ServerProcesses::default())
         .manage(SystemMonitor {
             sys: Mutex::new(System::new()),
+        })
+        .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
+            if let Some(state) = load_window_state() {
+                let _ = window.set_size(tauri::LogicalSize::new(state.width, state.height));
+                let _ = window.set_position(tauri::LogicalPosition::new(state.x as f64, state.y as f64));
+            }
+
+            let w = window.clone();
+            window.on_window_event(move |event| {
+                use tauri::WindowEvent;
+                match event {
+                    WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
+                        if let (Ok(size), Ok(pos)) = (w.inner_size(), w.outer_position()) {
+                            let scale = w.scale_factor().unwrap_or(1.0);
+                            save_window_state(&WindowState {
+                                width: size.width as f64 / scale,
+                                height: size.height as f64 / scale,
+                                x: pos.x,
+                                y: pos.y,
+                            });
+                        }
+                    }
+                    _ => {}
+                }
+            });
+
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             save_config,

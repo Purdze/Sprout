@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "Sprout",
-        "width": 1200,
-        "height": 800,
+        "width": 900,
+        "height": 600,
         "minWidth": 800,
         "minHeight": 600,
         "resizable": true,

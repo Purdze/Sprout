@@ -140,32 +140,6 @@ function formatDimension(dim: string): string {
 function formatPosition(x: number, y: number, z: number): string {
   return `${Math.floor(x)}, ${Math.floor(y)}, ${Math.floor(z)}`;
 }
-
-function formatPlaytime(ticks: number): string {
-  const totalSeconds = Math.floor(ticks / 20);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m`;
-  return `${totalSeconds}s`;
-}
-
-function formatKdr(kills: number, deaths: number): string {
-  if (deaths === 0) return kills > 0 ? `${kills}.0` : '0.0';
-  return (kills / deaths).toFixed(1);
-}
-
-function formatDistance(cm: number): string {
-  const blocks = Math.floor(cm / 100);
-  if (blocks >= 1000) return `${(blocks / 1000).toFixed(1)}k`;
-  return blocks.toLocaleString();
-}
-
-function formatCount(n: number): string {
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
-  return n.toLocaleString();
-}
 </script>
 
 <template>
@@ -323,9 +297,9 @@ function formatCount(n: number): string {
 
       <!-- Stats grid -->
       <div class="stats-grid">
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Playtime</span>
-          <span class="stat-value">{{ formatPlaytime(player.playtimeTicks) }}</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">World</span>
@@ -345,33 +319,33 @@ function formatCount(n: number): string {
           <span class="stat-label">Last Slept</span>
           <span class="stat-value">{{ player.lastSlept ?? 'None' }}</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Last Death</span>
-          <span class="stat-value">{{ player.lastDeath ?? 'None' }}</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">KDR</span>
-          <span class="stat-value">{{ formatKdr(player.playerKills, player.deaths) }}</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Deaths</span>
-          <span class="stat-value">{{ player.deaths }}</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Items Picked Up</span>
-          <span class="stat-value">{{ formatCount(player.itemsPickedUp) }}</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Items Used</span>
-          <span class="stat-value">{{ formatCount(player.itemsUsed) }}</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Mobs Killed</span>
-          <span class="stat-value">{{ formatCount(player.mobKills) }}</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
-        <div class="stat-item">
+        <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Distance</span>
-          <span class="stat-value">{{ formatDistance(player.distanceCm) }} blocks</span>
+          <span class="stat-value muted">Not implemented</span>
         </div>
       </div>
 
@@ -728,6 +702,16 @@ function formatCount(n: number): string {
   font-size: 13px;
   color: #ccc;
   font-weight: 500;
+}
+
+.stat-item.disabled {
+  opacity: 0.4;
+}
+
+.stat-value.muted {
+  font-size: 11px;
+  font-style: italic;
+  color: #555;
 }
 
 /* Inventory layout */
