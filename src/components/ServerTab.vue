@@ -6,6 +6,7 @@ import PlayersView from './views/PlayersView.vue';
 import PlayerInventoryView from './views/PlayerInventoryView.vue';
 import ConfigView from './views/ConfigView.vue';
 import DomainsView from './views/DomainsView.vue';
+import MapView from './views/MapView.vue';
 import type { Server } from '../types';
 
 defineProps<{
@@ -22,9 +23,9 @@ const emit = defineEmits<{
   saveConfigFile: [dir: string, file: string, content: string];
 }>();
 
-const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains' | 'inventory'>(
-  'console'
-);
+const activeView = ref<
+  'console' | 'graphs' | 'players' | 'config' | 'domains' | 'inventory' | 'map'
+>('console');
 const selectedPlayer = ref('');
 </script>
 
@@ -96,6 +97,9 @@ const selectedPlayer = ref('');
       >
         Config
       </button>
+      <button :class="['view-tab', { active: activeView === 'map' }]" @click="activeView = 'map'">
+        Map
+      </button>
       <button
         :class="['view-tab', { active: activeView === 'domains' }]"
         @click="activeView = 'domains'"
@@ -142,6 +146,8 @@ const selectedPlayer = ref('');
     />
 
     <DomainsView v-show="activeView === 'domains'" :server="server" />
+
+    <MapView v-show="activeView === 'map'" :server="server" />
   </div>
 </template>
 
@@ -157,8 +163,8 @@ const selectedPlayer = ref('');
   align-items: center;
   gap: 24px;
   padding: 12px 16px;
-  background: #252525;
-  border-bottom: 1px solid #333;
+  background: var(--bg-medium);
+  border-bottom: 1px solid var(--bg-light);
 }
 
 .stat {
@@ -169,26 +175,26 @@ const selectedPlayer = ref('');
 
 .stat-label {
   font-size: 11px;
-  color: #666;
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .stat-value {
   font-size: 14px;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 500;
 }
 
 .stat-value.status.running {
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .stat-value.status.starting {
-  color: #fbbf24;
+  color: var(--color-warning-light);
 }
 
 .stat-value.status.stopped {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .controls {
@@ -207,22 +213,22 @@ const selectedPlayer = ref('');
 }
 
 .btn.start {
-  background: #4ade80;
+  background: var(--color-success);
   color: #000;
 }
 
 .btn.stop {
-  background: #ef4444;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--text-primary);
 }
 
 .btn.clear {
-  background: #333;
-  color: #fff;
+  background: var(--bg-light);
+  color: var(--text-primary);
 }
 
 .btn.clear:hover {
-  background: #444;
+  background: var(--bg-hover);
 }
 
 .btn:disabled {
@@ -232,8 +238,8 @@ const selectedPlayer = ref('');
 
 .view-tabs {
   display: flex;
-  background: #252525;
-  border-bottom: 1px solid #333;
+  background: var(--bg-medium);
+  border-bottom: 1px solid var(--bg-light);
   padding: 0 12px;
 }
 
@@ -241,7 +247,7 @@ const selectedPlayer = ref('');
   padding: 10px 16px;
   background: none;
   border: none;
-  color: #888;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 13px;
   border-bottom: 2px solid transparent;
@@ -249,12 +255,12 @@ const selectedPlayer = ref('');
 }
 
 .view-tab:hover {
-  color: #ccc;
+  color: var(--text-secondary);
 }
 
 .view-tab.active {
-  color: #f97316;
-  border-bottom-color: #f97316;
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 
 .server-tab > :deep(.console-view),
@@ -262,7 +268,8 @@ const selectedPlayer = ref('');
 .server-tab > :deep(.players-view),
 .server-tab > :deep(.inventory-view),
 .server-tab > :deep(.config-view),
-.server-tab > :deep(.domains-view) {
+.server-tab > :deep(.domains-view),
+.server-tab > :deep(.map-view) {
   flex: 1;
   min-height: 0;
 }

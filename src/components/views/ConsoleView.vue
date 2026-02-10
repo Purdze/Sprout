@@ -68,18 +68,18 @@ watch(
   min-height: 0;
   overflow-y: auto;
   padding: 12px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: var(--font-mono);
   font-size: 13px;
-  background: #0d0d0d;
+  background: var(--bg-darkest);
 }
 
 .logs-empty {
-  color: #444;
+  color: var(--text-faint);
   font-style: italic;
 }
 
 .log-line {
-  color: #ccc;
+  color: var(--text-secondary);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
@@ -89,25 +89,25 @@ watch(
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  background: #252525;
-  border-top: 1px solid #333;
+  background: var(--bg-medium);
+  border-top: 1px solid var(--bg-light);
   gap: 8px;
 }
 
 .prompt {
-  color: #f97316;
-  font-family: monospace;
+  color: var(--color-primary);
+  font-family: var(--font-mono);
   font-weight: bold;
 }
 
 .command-bar input {
   flex: 1;
   padding: 8px 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--bg-dark);
+  border: 1px solid var(--bg-light);
   border-radius: 6px;
-  color: #fff;
-  font-family: monospace;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
   font-size: 14px;
 }
 
@@ -117,10 +117,10 @@ watch(
 
 .send-btn {
   padding: 8px 16px;
-  background: #f97316;
+  background: var(--color-primary);
   border: none;
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
 }

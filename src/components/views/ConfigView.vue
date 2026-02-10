@@ -164,36 +164,36 @@ const isReadOnly = () =>
   flex: 1;
   display: flex;
   overflow: hidden;
-  background: #0d0d0d;
+  background: var(--bg-darkest);
 }
 
 .config-sidebar {
   width: 200px;
-  background: #1a1a1a;
-  border-right: 1px solid #333;
+  background: var(--bg-dark);
+  border-right: 1px solid var(--bg-light);
   display: flex;
   flex-direction: column;
 }
 
 .config-sidebar-header {
   padding: 8px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--bg-light);
 }
 
 .directory-select {
   width: 100%;
   padding: 6px 8px;
-  background: #252525;
-  border: 1px solid #333;
+  background: var(--bg-medium);
+  border: 1px solid var(--bg-light);
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
 }
 
 .directory-select:focus {
   outline: none;
-  border-color: #f97316;
+  border-color: var(--color-primary);
 }
 
 .config-file-list {
@@ -206,24 +206,24 @@ const isReadOnly = () =>
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  color: #888;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 13px;
 }
 
 .config-file-item:hover {
-  background: #252525;
-  color: #ccc;
+  background: var(--bg-medium);
+  color: var(--text-secondary);
 }
 
 .config-file-item.active {
-  background: #333;
-  color: #fff;
+  background: var(--bg-light);
+  color: var(--text-primary);
 }
 
 .config-empty {
   padding: 12px;
-  color: #444;
+  color: var(--text-faint);
   font-size: 12px;
   font-style: italic;
 }
@@ -231,10 +231,10 @@ const isReadOnly = () =>
 .config-warning {
   padding: 10px 12px;
   background: #f59e0b20;
-  color: #f59e0b;
+  color: var(--color-warning);
   font-size: 11px;
   text-align: center;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--bg-light);
 }
 
 .config-editor {
@@ -248,12 +248,12 @@ const isReadOnly = () =>
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #333;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--bg-light);
 }
 
 .config-editor-title {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   display: flex;
   align-items: center;
@@ -263,9 +263,9 @@ const isReadOnly = () =>
 .readonly-badge {
   font-size: 10px;
   padding: 2px 6px;
-  background: #666;
+  background: var(--text-muted);
   border-radius: 3px;
-  color: #fff;
+  color: var(--text-primary);
   text-transform: uppercase;
 }
 
@@ -276,13 +276,13 @@ const isReadOnly = () =>
 }
 
 .config-modified {
-  color: #f97316;
+  color: var(--color-primary);
   font-size: 12px;
 }
 
 .config-save-btn {
   padding: 6px 14px;
-  background: #4ade80;
+  background: var(--color-success);
   border: none;
   border-radius: 4px;
   color: #000;
@@ -291,14 +291,14 @@ const isReadOnly = () =>
 }
 
 .config-save-btn:disabled {
-  background: #333;
-  color: #666;
+  background: var(--bg-light);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
 .config-copy-btn {
   padding: 6px 14px;
-  background: #60a5fa;
+  background: var(--color-info);
   border: none;
   border-radius: 4px;
   color: #000;
@@ -308,20 +308,20 @@ const isReadOnly = () =>
 }
 
 .config-copy-btn:hover {
-  background: #93c5fd;
+  background: var(--color-info-light);
 }
 
 .config-copy-btn.copied {
-  background: #4ade80;
+  background: var(--color-success);
 }
 
 .config-textarea {
   flex: 1;
   padding: 12px;
-  background: #0d0d0d;
+  background: var(--bg-darkest);
   border: none;
-  color: #ccc;
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
   font-size: 13px;
   resize: none;
   line-height: 1.5;
@@ -332,6 +332,6 @@ const isReadOnly = () =>
 }
 
 .config-textarea:disabled {
-  color: #444;
+  color: var(--text-faint);
 }
 </style>

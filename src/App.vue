@@ -17,26 +17,31 @@ let statsInterval: ReturnType<typeof setInterval> | null = null;
 const draggingTab = ref<number | null>(null);
 const currentWindowLabel = getCurrentWebviewWindow().label;
 
-function createServer(name: string, path: string): Server {
+/** Fills in runtime-only fields that aren't persisted or come from transfers. */
+function withServerDefaults(partial: Partial<Server>): Server {
   return {
-    id: crypto.randomUUID(),
-    name,
-    path,
-    logs: [],
-    status: 'stopped',
-    cpu: 0,
-    memory: 0,
-    players: 0,
-    maxPlayers: 20,
-    tps: 0,
-    cpuHistory: [],
-    memoryHistory: [],
-    tpsHistory: [],
-    playerList: [],
-    plugins: [],
-    configFiles: [],
-    configContent: '',
+    id: partial.id || crypto.randomUUID(),
+    name: partial.name || '',
+    path: partial.path || '',
+    status: partial.status || 'stopped',
+    cpu: partial.cpu || 0,
+    memory: partial.memory || 0,
+    players: partial.players || 0,
+    maxPlayers: partial.maxPlayers || 20,
+    tps: partial.tps || 0,
+    logs: partial.logs || [],
+    cpuHistory: partial.cpuHistory || [],
+    memoryHistory: partial.memoryHistory || [],
+    tpsHistory: partial.tpsHistory || [],
+    playerList: partial.playerList || [],
+    plugins: partial.plugins || [],
+    configFiles: partial.configFiles || [],
+    configContent: partial.configContent || '',
   };
+}
+
+function createServer(name: string, path: string): Server {
+  return withServerDefaults({ name, path });
 }
 
 async function addServer(name: string, path: string) {
@@ -86,17 +91,7 @@ async function loadConfig() {
     }
 
     // Ensure all servers have the required arrays initialized
-    servers.value = filteredConfig.map((s) => ({
-      ...s,
-      logs: s.logs || [],
-      cpuHistory: s.cpuHistory || [],
-      memoryHistory: s.memoryHistory || [],
-      tpsHistory: s.tpsHistory || [],
-      playerList: s.playerList || [],
-      plugins: s.plugins || [],
-      configFiles: s.configFiles || [],
-      configContent: s.configContent || '',
-    }));
+    servers.value = filteredConfig.map((s) => withServerDefaults(s));
   } catch (e) {
     console.error('Failed to load config:', e);
   }
@@ -162,10 +157,10 @@ async function stopServer(server: Server) {
     server.memory = 0;
     server.players = 0;
     server.tps = 0;
-    server.cpuHistory = [];
-    server.memoryHistory = [];
-    server.tpsHistory = [];
-    server.playerList = [];
+    server.cpuHistory.length = 0;
+    server.memoryHistory.length = 0;
+    server.tpsHistory.length = 0;
+    server.playerList.length = 0;
   } catch (e) {
     console.error('Failed to stop server:', e);
   }
@@ -190,17 +185,7 @@ onMounted(async () => {
         const server = JSON.parse(event.payload.server) as Server;
         // Add if not already present
         if (!servers.value.find((s) => s.id === server.id)) {
-          servers.value.push({
-            ...server,
-            logs: [],
-            cpuHistory: [],
-            memoryHistory: [],
-            tpsHistory: [],
-            playerList: [],
-            plugins: [],
-            configFiles: [],
-            configContent: '',
-          });
+          servers.value.push(withServerDefaults({ ...server, logs: [] }));
           activeTab.value = servers.value.length - 1;
         }
       }
@@ -376,7 +361,7 @@ function parseLogForStats(server: Server, log: string) {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #1a1a1a;
+  background: var(--bg-dark);
 }
 
 .app.dragging-active,
@@ -396,6 +381,6 @@ function parseLogForStats(server: Server, log: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #666;
+  color: var(--text-muted);
 }
 </style>

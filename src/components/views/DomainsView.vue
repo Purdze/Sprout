@@ -290,7 +290,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   overflow: hidden;
-  background: #0d0d0d;
+  background: var(--bg-darkest);
 }
 
 /* Connect screen */
@@ -302,8 +302,8 @@ onMounted(async () => {
 }
 
 .connect-card {
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--bg-dark);
+  border: 1px solid var(--bg-light);
   border-radius: 8px;
   padding: 32px;
   max-width: 420px;
@@ -321,13 +321,13 @@ onMounted(async () => {
 }
 
 .connect-card h2 {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 18px;
   margin: 0;
 }
 
 .connect-card p {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 13px;
   margin: 0;
   line-height: 1.5;
@@ -335,15 +335,15 @@ onMounted(async () => {
 
 .permissions-box {
   width: 100%;
-  background: #252525;
-  border: 1px solid #333;
+  background: var(--bg-medium);
+  border: 1px solid var(--bg-light);
   border-radius: 6px;
   padding: 10px 14px;
   text-align: center;
 }
 
 .permissions-title {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -357,37 +357,37 @@ onMounted(async () => {
 }
 
 .perm-path {
-  color: #ccc;
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
 }
 
 .perm-arrow {
-  color: #555;
+  color: var(--text-dim);
   margin: 0 2px;
 }
 
 .perm-label {
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 .perm-value {
-  color: #ccc;
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
 }
 
 .perm-note {
-  color: #555;
+  color: var(--text-dim);
   font-size: 11px;
   font-style: italic;
 }
 
 .connect-hint {
-  color: #666 !important;
+  color: var(--text-muted) !important;
   font-size: 12px !important;
 }
 
 .connect-link {
-  color: #f97316;
+  color: var(--color-primary);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
@@ -407,24 +407,24 @@ onMounted(async () => {
 .connect-input {
   flex: 1;
   padding: 8px 12px;
-  background: #252525;
-  border: 1px solid #333;
+  background: var(--bg-medium);
+  border: 1px solid var(--bg-light);
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
 }
 
 .connect-input:focus {
   outline: none;
-  border-color: #f97316;
+  border-color: var(--color-primary);
 }
 
 .connect-btn {
   padding: 8px 16px;
-  background: #f97316;
+  background: var(--color-primary);
   border: none;
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -432,17 +432,17 @@ onMounted(async () => {
 }
 
 .connect-btn:hover {
-  background: #ea580c;
+  background: var(--color-primary-hover);
 }
 
 .connect-btn:disabled {
-  background: #333;
-  color: #666;
+  background: var(--bg-light);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
 .connect-error {
-  color: #ef4444;
+  color: var(--color-danger);
   font-size: 12px;
   text-align: left;
   width: 100%;
@@ -451,22 +451,22 @@ onMounted(async () => {
 /* Sidebar */
 .domains-sidebar {
   width: 200px;
-  background: #1a1a1a;
-  border-right: 1px solid #333;
+  background: var(--bg-dark);
+  border-right: 1px solid var(--bg-light);
   display: flex;
   flex-direction: column;
 }
 
 .domains-sidebar-header {
   padding: 8px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--bg-light);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .sidebar-title {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -475,16 +475,16 @@ onMounted(async () => {
 .disconnect-btn {
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid #444;
+  border: 1px solid var(--bg-hover);
   border-radius: 3px;
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 11px;
   cursor: pointer;
 }
 
 .disconnect-btn:hover {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .domains-zone-list {
@@ -497,25 +497,25 @@ onMounted(async () => {
   align-items: center;
   gap: 8px;
   padding: 10px 12px;
-  color: #888;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 13px;
 }
 
 .zone-item:hover {
-  background: #252525;
-  color: #ccc;
+  background: var(--bg-medium);
+  color: var(--text-secondary);
 }
 
 .zone-item.active {
-  background: #333;
-  color: #fff;
+  background: var(--bg-light);
+  color: var(--text-primary);
 }
 
 .zones-loading,
 .zones-empty {
   padding: 12px;
-  color: #444;
+  color: var(--text-faint);
   font-size: 12px;
   font-style: italic;
 }
@@ -529,7 +529,7 @@ onMounted(async () => {
 }
 
 .domains-empty {
-  color: #444;
+  color: var(--text-faint);
   font-style: italic;
   text-align: center;
   padding: 40px;
@@ -540,35 +540,35 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #333;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--bg-light);
 }
 
 .main-title {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .add-record-btn {
   padding: 6px 14px;
-  background: #f97316;
+  background: var(--color-primary);
   border: none;
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .add-record-btn:hover {
-  background: #ea580c;
+  background: var(--color-primary-hover);
 }
 
 /* Create form */
 .create-form {
   padding: 12px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #333;
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--bg-light);
 }
 
 .form-row {
@@ -589,7 +589,7 @@ onMounted(async () => {
 }
 
 .form-group label {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -602,20 +602,20 @@ onMounted(async () => {
 }
 
 .hint {
-  color: #555;
+  color: var(--text-dim);
   font-size: 11px;
 }
 
 .subdomain-input {
   display: flex;
   align-items: center;
-  background: #252525;
-  border: 1px solid #333;
+  background: var(--bg-medium);
+  border: 1px solid var(--bg-light);
   border-radius: 4px;
 }
 
 .subdomain-input:focus-within {
-  border-color: #f97316;
+  border-color: var(--color-primary);
 }
 
 .subdomain-field {
@@ -631,7 +631,7 @@ onMounted(async () => {
 }
 
 .subdomain-suffix {
-  color: #555;
+  color: var(--text-dim);
   font-size: 13px;
   padding-right: 10px;
   white-space: nowrap;
@@ -639,21 +639,21 @@ onMounted(async () => {
 
 .form-input {
   padding: 6px 10px;
-  background: #252525;
-  border: 1px solid #333;
+  background: var(--bg-medium);
+  border: 1px solid var(--bg-light);
   border-radius: 4px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #f97316;
+  border-color: var(--color-primary);
 }
 
 .create-btn {
   padding: 6px 14px;
-  background: #4ade80;
+  background: var(--color-success);
   border: none;
   border-radius: 4px;
   color: #000;
@@ -665,17 +665,17 @@ onMounted(async () => {
 }
 
 .create-btn:hover {
-  background: #22c55e;
+  background: var(--color-success-hover);
 }
 
 .create-btn:disabled {
-  background: #333;
-  color: #666;
+  background: var(--bg-light);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 
 .create-error {
-  color: #ef4444;
+  color: var(--color-danger);
   font-size: 12px;
   margin-top: 8px;
 }
@@ -689,7 +689,7 @@ onMounted(async () => {
 
 .records-loading,
 .records-empty {
-  color: #444;
+  color: var(--text-faint);
   font-style: italic;
   padding: 24px;
   text-align: center;
@@ -701,8 +701,8 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   padding: 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--bg-dark);
+  border: 1px solid var(--bg-light);
   border-radius: 6px;
   margin-bottom: 8px;
 }
@@ -715,28 +715,28 @@ onMounted(async () => {
 }
 
 .record-name {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 13px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: var(--font-mono);
 }
 
 .record-content {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 12px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  font-family: var(--font-mono);
 }
 
 .record-details {
-  color: #555;
+  color: var(--text-dim);
   font-size: 11px;
 }
 
 .delete-btn {
   padding: 4px 10px;
   background: transparent;
-  border: 1px solid #444;
+  border: 1px solid var(--bg-hover);
   border-radius: 3px;
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 11px;
   cursor: pointer;
   flex-shrink: 0;
@@ -744,7 +744,7 @@ onMounted(async () => {
 }
 
 .delete-btn:hover {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 </style>

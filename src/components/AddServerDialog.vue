@@ -148,7 +148,7 @@ function close() {
 }
 
 .dialog {
-  background: #252525;
+  background: var(--bg-medium);
   border-radius: 12px;
   padding: 24px;
   min-width: 400px;
@@ -156,7 +156,7 @@ function close() {
 
 .dialog h3 {
   margin: 0 0 16px;
-  color: #fff;
+  color: var(--text-primary);
 }
 
 .form-group {
@@ -166,17 +166,17 @@ function close() {
 .form-group label {
   display: block;
   margin-bottom: 4px;
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 14px;
 }
 
 .form-group input {
   width: 100%;
   padding: 8px 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--bg-dark);
+  border: 1px solid var(--bg-light);
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
@@ -198,29 +198,29 @@ function close() {
 }
 
 .btn.browse {
-  background: #444;
-  color: #fff;
+  background: var(--bg-hover);
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
 .btn.browse:hover {
-  background: #555;
+  background: var(--text-dim);
 }
 
 .btn.primary {
-  background: #f97316;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-primary);
 }
 
 .btn.secondary {
-  background: #333;
-  color: #fff;
+  background: var(--bg-light);
+  color: var(--text-primary);
 }
 
 .btn.download {
   width: 100%;
   background: #1a6b3c;
-  color: #fff;
+  color: var(--text-primary);
   padding: 10px 16px;
 }
 
@@ -241,25 +241,25 @@ function close() {
 .progress-bar {
   width: 100%;
   height: 8px;
-  background: #1a1a1a;
+  background: var(--bg-dark);
   border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: #f97316;
+  background: var(--color-primary);
   border-radius: 4px;
   transition: width 0.2s ease;
 }
 
 .progress-text {
-  color: #888;
+  color: var(--text-tertiary);
   font-size: 13px;
 }
 
 .download-done {
-  color: #4ade80;
+  color: var(--color-success);
   font-size: 14px;
 }
 

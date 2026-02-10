@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { getPlayerAvatarUrl } from '../../utils/minecraft';
 import type { Server } from '../../types';
 
 const props = defineProps<{
@@ -99,7 +100,7 @@ const filteredPlayers = computed(() => {
         <div class="player-identity" @click="emit('viewInventory', player)">
           <img
             class="player-avatar"
-            :src="`https://mc-heads.net/avatar/${player}/36`"
+            :src="getPlayerAvatarUrl(player, 36)"
             :alt="player"
           />
           <span class="player-name">{{ player }}</span>
@@ -138,7 +139,7 @@ const filteredPlayers = computed(() => {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
-  background: #0d0d0d;
+  background: var(--bg-darkest);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -153,16 +154,16 @@ const filteredPlayers = computed(() => {
 .player-search {
   flex: 1;
   padding: 8px 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: var(--bg-dark);
+  border: 1px solid var(--bg-light);
   border-radius: 6px;
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .view-toggle {
   display: flex;
-  background: #1a1a1a;
+  background: var(--bg-dark);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -171,7 +172,7 @@ const filteredPlayers = computed(() => {
   padding: 8px 10px;
   background: none;
   border: none;
-  color: #666;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -179,16 +180,16 @@ const filteredPlayers = computed(() => {
 }
 
 .toggle-btn:hover {
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 .toggle-btn.active {
-  background: #333;
-  color: #fff;
+  background: var(--bg-light);
+  color: var(--text-primary);
 }
 
 .players-empty {
-  color: #444;
+  color: var(--text-faint);
   font-style: italic;
   text-align: center;
   padding: 40px;
@@ -212,7 +213,7 @@ const filteredPlayers = computed(() => {
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: #1a1a1a;
+  background: var(--bg-dark);
   border-radius: 8px;
 }
 
@@ -222,7 +223,7 @@ const filteredPlayers = computed(() => {
   align-items: center;
   gap: 12px;
   padding: 10px 12px;
-  background: #1a1a1a;
+  background: var(--bg-dark);
   border-radius: 8px;
 }
 
@@ -243,7 +244,7 @@ const filteredPlayers = computed(() => {
 }
 
 .player-name {
-  color: #fff;
+  color: var(--text-primary);
   font-size: 14px;
   text-align: center;
 }
@@ -252,12 +253,12 @@ const filteredPlayers = computed(() => {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #555;
+  background: var(--text-dim);
   flex-shrink: 0;
 }
 
 .status-dot.online {
-  background: #4ade80;
+  background: var(--color-success);
 }
 
 .player-actions {
@@ -282,18 +283,18 @@ const filteredPlayers = computed(() => {
 }
 
 .player-btn.kick {
-  background: #f59e0b;
+  background: var(--color-warning);
   color: #000;
 }
 
 .player-btn.ban {
-  background: #ef4444;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--text-primary);
 }
 
 .player-btn.banip {
-  background: #ef4444;
-  color: #fff;
+  background: var(--color-danger);
+  color: var(--text-primary);
 }
 
 .player-btn:hover:not(:disabled) {
@@ -313,7 +314,7 @@ const filteredPlayers = computed(() => {
 }
 
 .player-identity:hover .player-name {
-  color: #f97316;
+  color: var(--color-primary);
 }
 
 .player-item.grid .player-identity {

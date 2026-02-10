@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import InventoryCell from './InventoryCell.vue';
+import { MINECRAFT_ASSET_BASE, getPlayerAvatarUrl, formatDimension } from '../../utils/minecraft';
 import type { Server, PlayerDetails } from '../../types';
 
 const props = defineProps<{
@@ -84,35 +86,6 @@ function getSlotItem(slotNum: number) {
   return player.value.inventory.find((s) => s.slot === slotNum) || null;
 }
 
-function formatItemName(id: string): string {
-  return id
-    .replace('minecraft:', '')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-const ASSET_BASE =
-  'https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures';
-
-function itemIconUrl(id: string): string {
-  const name = id.replace('minecraft:', '');
-  return `${ASSET_BASE}/item/${name}.png`;
-}
-
-function onIconError(e: Event) {
-  const img = e.target as HTMLImageElement;
-  const src = img.src;
-  if (src.includes('/item/')) {
-    // try block texture
-    img.src = src.replace('/item/', '/block/');
-  } else {
-    // both failed, hide image
-    img.style.display = 'none';
-    const fallback = img.nextElementSibling as HTMLElement | null;
-    if (fallback) fallback.style.display = '';
-  }
-}
-
 const armorSlots = [103, 102, 101, 100];
 const mainSlots = computed(() => Array.from({ length: 27 }, (_, i) => i + 9));
 const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
@@ -121,20 +94,6 @@ const enderSlots = computed(() => Array.from({ length: 27 }, (_, i) => i));
 function getEnderSlotItem(slotNum: number) {
   if (!player.value) return null;
   return player.value.enderChest.find((s) => s.slot === slotNum) || null;
-}
-
-function formatDimension(dim: string): string {
-  const name = dim.replace('minecraft:', '');
-  switch (name) {
-    case 'overworld':
-      return 'Overworld';
-    case 'the_nether':
-      return 'The Nether';
-    case 'the_end':
-      return 'The End';
-    default:
-      return formatItemName(dim);
-  }
 }
 
 function formatPosition(x: number, y: number, z: number): string {
@@ -163,7 +122,7 @@ function formatPosition(x: number, y: number, z: number): string {
       </button>
       <img
         class="player-head"
-        :src="`https://mc-heads.net/avatar/${playerName}/56`"
+        :src="getPlayerAvatarUrl(playerName, 56)"
         :alt="playerName"
       />
       <div class="header-info">
@@ -177,7 +136,7 @@ function formatPosition(x: number, y: number, z: number): string {
           <span class="pstat health"
             ><img
               class="pstat-mc-icon"
-              src="https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/gui/sprites/hud/heart/full.png"
+              :src="`${MINECRAFT_ASSET_BASE}/gui/sprites/hud/heart/full.png`"
               alt="Health"
             />
             {{ player.health.toFixed(0) }}/{{ player.maxHealth.toFixed(0) }}</span
@@ -185,7 +144,7 @@ function formatPosition(x: number, y: number, z: number): string {
           <span class="pstat food"
             ><img
               class="pstat-mc-icon"
-              src="https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/gui/sprites/hud/food_full.png"
+              :src="`${MINECRAFT_ASSET_BASE}/gui/sprites/hud/food_full.png`"
               alt="Food"
             />
             {{ player.food }}/20</span
@@ -193,7 +152,7 @@ function formatPosition(x: number, y: number, z: number): string {
           <span class="pstat xp"
             ><img
               class="pstat-mc-icon"
-              src="https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/textures/item/experience_bottle.png"
+              :src="`${MINECRAFT_ASSET_BASE}/item/experience_bottle.png`"
               alt="XP"
             />
             Lvl {{ player.xpLevel }}</span
@@ -355,51 +314,13 @@ function formatPosition(x: number, y: number, z: number): string {
           <div class="inv-main">
             <div class="section-label">Inventory</div>
             <div class="inv-grid">
-              <div
-                v-for="s in mainSlots"
-                :key="s"
-                :class="['inv-cell', { empty: !getSlotItem(s) }]"
-                :title="getSlotItem(s) ? formatItemName(getSlotItem(s)!.id) : ''"
-              >
-                <template v-if="getSlotItem(s)">
-                  <img
-                    class="item-icon"
-                    :src="itemIconUrl(getSlotItem(s)!.id)"
-                    :alt="getSlotItem(s)!.name"
-                    @error="onIconError"
-                  />
-                  <span class="cell-fallback" style="display: none">{{
-                    formatItemName(getSlotItem(s)!.id)
-                  }}</span>
-                  <span v-if="getSlotItem(s)!.count > 1" class="cell-count">{{
-                    getSlotItem(s)!.count
-                  }}</span>
-                </template>
-              </div>
+              <InventoryCell v-for="s in mainSlots" :key="s" :item="getSlotItem(s)" />
             </div>
           </div>
           <div class="inv-equip">
             <div class="section-label">Armor</div>
             <div class="equip-cells">
-              <div
-                v-for="slot in armorSlots"
-                :key="slot"
-                :class="['equip-cell', { empty: !getSlotItem(slot) }]"
-                :title="getSlotItem(slot) ? formatItemName(getSlotItem(slot)!.id) : ''"
-              >
-                <template v-if="getSlotItem(slot)">
-                  <img
-                    class="item-icon"
-                    :src="itemIconUrl(getSlotItem(slot)!.id)"
-                    :alt="getSlotItem(slot)!.name"
-                    @error="onIconError"
-                  />
-                  <span class="cell-fallback" style="display: none"></span>
-                  <span v-if="getSlotItem(slot)!.count > 1" class="cell-count">{{
-                    getSlotItem(slot)!.count
-                  }}</span>
-                </template>
-              </div>
+              <InventoryCell v-for="slot in armorSlots" :key="slot" :item="getSlotItem(slot)" variant="equip" />
             </div>
           </div>
         </div>
@@ -408,49 +329,13 @@ function formatPosition(x: number, y: number, z: number): string {
           <div class="inv-main">
             <div class="section-label">Hotbar</div>
             <div class="inv-grid">
-              <div
-                v-for="s in hotbar"
-                :key="s"
-                :class="['inv-cell', { empty: !getSlotItem(s) }]"
-                :title="getSlotItem(s) ? formatItemName(getSlotItem(s)!.id) : ''"
-              >
-                <template v-if="getSlotItem(s)">
-                  <img
-                    class="item-icon"
-                    :src="itemIconUrl(getSlotItem(s)!.id)"
-                    :alt="getSlotItem(s)!.name"
-                    @error="onIconError"
-                  />
-                  <span class="cell-fallback" style="display: none">{{
-                    formatItemName(getSlotItem(s)!.id)
-                  }}</span>
-                  <span v-if="getSlotItem(s)!.count > 1" class="cell-count">{{
-                    getSlotItem(s)!.count
-                  }}</span>
-                </template>
-              </div>
+              <InventoryCell v-for="s in hotbar" :key="s" :item="getSlotItem(s)" />
             </div>
           </div>
           <div class="inv-equip">
             <div class="section-label">Offhand</div>
             <div class="equip-cells">
-              <div
-                :class="['equip-cell', { empty: !getSlotItem(-106) }]"
-                :title="getSlotItem(-106) ? formatItemName(getSlotItem(-106)!.id) : ''"
-              >
-                <template v-if="getSlotItem(-106)">
-                  <img
-                    class="item-icon"
-                    :src="itemIconUrl(getSlotItem(-106)!.id)"
-                    :alt="getSlotItem(-106)!.name"
-                    @error="onIconError"
-                  />
-                  <span class="cell-fallback" style="display: none"></span>
-                  <span v-if="getSlotItem(-106)!.count > 1" class="cell-count">{{
-                    getSlotItem(-106)!.count
-                  }}</span>
-                </template>
-              </div>
+              <InventoryCell :item="getSlotItem(-106)" variant="equip" />
             </div>
           </div>
         </div>
@@ -460,27 +345,7 @@ function formatPosition(x: number, y: number, z: number): string {
       <template v-if="activeTab === 'enderchest'">
         <div class="section-label">Ender Chest</div>
         <div class="inv-grid">
-          <div
-            v-for="s in enderSlots"
-            :key="s"
-            :class="['inv-cell', { empty: !getEnderSlotItem(s) }]"
-            :title="getEnderSlotItem(s) ? formatItemName(getEnderSlotItem(s)!.id) : ''"
-          >
-            <template v-if="getEnderSlotItem(s)">
-              <img
-                class="item-icon"
-                :src="itemIconUrl(getEnderSlotItem(s)!.id)"
-                :alt="getEnderSlotItem(s)!.name"
-                @error="onIconError"
-              />
-              <span class="cell-fallback" style="display: none">{{
-                formatItemName(getEnderSlotItem(s)!.id)
-              }}</span>
-              <span v-if="getEnderSlotItem(s)!.count > 1" class="cell-count">{{
-                getEnderSlotItem(s)!.count
-              }}</span>
-            </template>
-          </div>
+          <InventoryCell v-for="s in enderSlots" :key="s" :item="getEnderSlotItem(s)" />
         </div>
       </template>
     </div>
@@ -492,7 +357,7 @@ function formatPosition(x: number, y: number, z: number): string {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #0d0d0d;
+  background: var(--bg-darkest);
   overflow-y: auto;
 }
 
@@ -502,7 +367,7 @@ function formatPosition(x: number, y: number, z: number): string {
   align-items: center;
   gap: 14px;
   padding: 18px 20px;
-  background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+  background: linear-gradient(135deg, var(--bg-dark) 0%, #222 100%);
   border-bottom: 1px solid #2a2a2a;
 }
 
@@ -510,9 +375,9 @@ function formatPosition(x: number, y: number, z: number): string {
   width: 32px;
   height: 32px;
   background: none;
-  border: 1px solid #333;
+  border: 1px solid var(--bg-light);
   border-radius: 6px;
-  color: #666;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -522,8 +387,8 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .back-btn:hover {
-  color: #fff;
-  border-color: #555;
+  color: var(--text-primary);
+  border-color: var(--text-dim);
   background: #2a2a2a;
 }
 
@@ -532,7 +397,7 @@ function formatPosition(x: number, y: number, z: number): string {
   height: 56px;
   border-radius: 6px;
   image-rendering: pixelated;
-  border: 2px solid #333;
+  border: 2px solid var(--bg-light);
   flex-shrink: 0;
 }
 
@@ -544,7 +409,7 @@ function formatPosition(x: number, y: number, z: number): string {
 .player-title {
   margin: 0;
   font-size: 20px;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 600;
   letter-spacing: -0.02em;
   display: flex;
@@ -557,13 +422,13 @@ function formatPosition(x: number, y: number, z: number): string {
   font-weight: 500;
   padding: 2px 8px;
   border-radius: 4px;
-  background: #333;
-  color: #666;
+  background: var(--bg-light);
+  color: var(--text-muted);
 }
 
 .online-badge.online {
   background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  color: var(--color-success);
 }
 
 .player-stats {
@@ -589,13 +454,13 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .pstat.mode {
-  color: #555;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .last-refreshed {
   font-size: 11px;
-  color: #444;
+  color: var(--text-faint);
   white-space: nowrap;
 }
 
@@ -603,9 +468,9 @@ function formatPosition(x: number, y: number, z: number): string {
   width: 32px;
   height: 32px;
   background: none;
-  border: 1px solid #333;
+  border: 1px solid var(--bg-light);
   border-radius: 6px;
-  color: #666;
+  color: var(--text-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -615,8 +480,8 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .refresh-btn:hover:not(:disabled) {
-  color: #f97316;
-  border-color: #f97316;
+  color: var(--color-primary);
+  border-color: var(--color-primary);
   background: rgba(249, 115, 22, 0.08);
 }
 
@@ -631,14 +496,14 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .state-msg {
-  color: #555;
+  color: var(--text-dim);
   font-style: italic;
   text-align: center;
   padding: 40px 20px;
 }
 
 .state-msg.err {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 /* Tab bar */
@@ -655,7 +520,7 @@ function formatPosition(x: number, y: number, z: number): string {
   background: none;
   border: 1px solid #2a2a2a;
   border-radius: 6px;
-  color: #666;
+  color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -664,13 +529,13 @@ function formatPosition(x: number, y: number, z: number): string {
 
 .tab-btn:hover {
   color: #aaa;
-  border-color: #444;
+  border-color: var(--bg-hover);
 }
 
 .tab-btn.active {
-  background: #1a1a1a;
-  color: #f97316;
-  border-color: #f97316;
+  background: var(--bg-dark);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
 }
 
 /* Stats grid */
@@ -693,14 +558,14 @@ function formatPosition(x: number, y: number, z: number): string {
 
 .stat-label {
   font-size: 10px;
-  color: #555;
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .stat-value {
   font-size: 13px;
-  color: #ccc;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -711,7 +576,7 @@ function formatPosition(x: number, y: number, z: number): string {
 .stat-value.muted {
   font-size: 11px;
   font-style: italic;
-  color: #555;
+  color: var(--text-dim);
 }
 
 /* Inventory layout */
@@ -730,7 +595,7 @@ function formatPosition(x: number, y: number, z: number): string {
 
 .section-label {
   font-size: 11px;
-  color: #555;
+  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 6px;
@@ -741,58 +606,6 @@ function formatPosition(x: number, y: number, z: number): string {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   gap: 3px;
-}
-
-/* Inventory cell */
-.inv-cell {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 3px;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.inv-cell.empty {
-  background: #131313;
-  border-color: #1e1e1e;
-}
-
-/* Item icon */
-.item-icon {
-  width: 70%;
-  height: 70%;
-  object-fit: contain;
-  image-rendering: pixelated;
-}
-
-/* Text fallback when icon fails */
-.cell-fallback {
-  font-size: 9px;
-  color: #888;
-  text-align: center;
-  line-height: 1.1;
-  word-break: break-word;
-  padding: 2px;
-}
-
-/* Stack count */
-.cell-count {
-  position: absolute;
-  bottom: 0;
-  right: 2px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #fff;
-  text-shadow:
-    1px 1px 0 #000,
-    -1px -1px 0 #000,
-    1px -1px 0 #000,
-    -1px 1px 0 #000;
-  line-height: 1;
 }
 
 /* Equipment column */
@@ -809,23 +622,6 @@ function formatPosition(x: number, y: number, z: number): string {
   flex: 1;
 }
 
-.equip-cell {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 3px;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.equip-cell.empty {
-  background: #131313;
-  border-color: #1e1e1e;
-}
-
 /* Header actions */
 .header-actions {
   display: flex;
@@ -836,7 +632,7 @@ function formatPosition(x: number, y: number, z: number): string {
 
 .act-btn {
   padding: 4px 10px;
-  border: 1px solid #333;
+  border: 1px solid var(--bg-light);
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
@@ -856,17 +652,17 @@ function formatPosition(x: number, y: number, z: number): string {
 
 .act-btn.neutral {
   color: #999;
-  border-color: #333;
+  border-color: var(--bg-light);
 }
 
 .act-btn.neutral:hover:not(:disabled) {
-  color: #fff;
-  border-color: #555;
+  color: var(--text-primary);
+  border-color: var(--text-dim);
   background: #2a2a2a;
 }
 
 .act-btn.warn {
-  color: #f59e0b;
+  color: var(--color-warning);
   border-color: #f59e0b44;
 }
 
@@ -875,7 +671,7 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .act-btn.danger {
-  color: #ef4444;
+  color: var(--color-danger);
   border-color: #ef444444;
 }
 

@@ -131,11 +131,7 @@ async function onTabDrop(event: DragEvent) {
       <span class="close-btn" @click.stop="emit('remove', index)">&times;</span>
     </button>
     <button class="tab add-tab" @click="emit('add')">+</button>
-    <button
-      class="icon-btn donate-btn"
-      title="Donate"
-      @click="open('https://paypal.me/richarddm')"
-    >
+    <button class="icon-btn donate-btn" title="Donate" @click="open('https://paypal.me/richarddm')">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
         <path
           d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
@@ -155,8 +151,8 @@ async function onTabDrop(event: DragEvent) {
 <style scoped>
 .tab-bar {
   display: flex;
-  background: #252525;
-  border-bottom: 1px solid #333;
+  background: var(--bg-medium);
+  border-bottom: 1px solid var(--bg-light);
   padding: 8px 8px 0;
   gap: 4px;
 }
@@ -166,19 +162,19 @@ async function onTabDrop(event: DragEvent) {
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #1a1a1a;
+  background: var(--bg-dark);
   border: none;
   border-radius: 8px 8px 0 0;
-  color: #888;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 14px;
 }
 
 .tab.active {
-  background: #1a1a1a;
-  color: #fff;
-  border: 1px solid #333;
-  border-bottom: 1px solid #1a1a1a;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  border: 1px solid var(--bg-light);
+  border-bottom: 1px solid var(--bg-dark);
   margin-bottom: -1px;
 }
 
@@ -201,26 +197,26 @@ async function onTabDrop(event: DragEvent) {
 .add-tab {
   padding: 8px 12px;
   font-size: 18px;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #666;
+  background: var(--text-muted);
 }
 
 .status-dot.running {
-  background: #4ade80;
+  background: var(--color-success);
 }
 
 .status-dot.starting {
-  background: #fbbf24;
+  background: var(--color-warning-light);
 }
 
 .status-dot.stopped {
-  background: #666;
+  background: var(--text-muted);
 }
 
 .close-btn {
@@ -239,7 +235,7 @@ async function onTabDrop(event: DragEvent) {
   justify-content: center;
   background: none;
   border: none;
-  color: #666;
+  color: var(--text-muted);
   font-size: 18px;
   cursor: pointer;
   padding: 8px;
