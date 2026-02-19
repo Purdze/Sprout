@@ -24,7 +24,6 @@ const error = ref('');
 const mouseCoords = ref({ x: 0, z: 0 });
 const zoomLevel = ref(1);
 
-// Marker popup state
 const markerPopup = ref<{
   visible: boolean;
   x: number;
@@ -47,7 +46,6 @@ const markerPopup = ref<{
 
 const PRESET_COLORS = ['#f97316', '#ef4444', '#22c55e', '#3b82f6', '#a855f7', '#eab308'];
 
-// Pan/zoom state
 let offsetX = 0;
 let offsetZ = 0;
 let dragging = false;
@@ -58,15 +56,13 @@ let dragOffsetX = 0;
 let dragOffsetZ = 0;
 let animFrameId = 0;
 
-// Tile cache: key = "rx,rz" -> HTMLImageElement
 const tileCache = new Map<string, HTMLImageElement>();
 const tileLoading = new Set<string>();
 
-// Player head image cache: name -> HTMLImageElement
 const headCache = new Map<string, HTMLImageElement>();
 const headLoading = new Set<string>();
 const headFailed = new Set<string>();
-const HEAD_SIZE = 24; // pixels to draw the head on the map
+const HEAD_SIZE = 24; // px
 
 function loadPlayerHead(name: string) {
   if (headCache.has(name) || headLoading.has(name) || headFailed.has(name)) return;
@@ -83,7 +79,7 @@ function loadPlayerHead(name: string) {
   };
 }
 
-const TILE_SIZE = 512; // pixels per region tile
+const TILE_SIZE = 512; // px per region tile
 
 function tileKey(rx: number, rz: number): string {
   return `${rx},${rz}`;
@@ -162,6 +158,16 @@ function canvasToWorld(cx: number, cz: number): { wx: number; wz: number } {
   };
 }
 
+function drawLabel(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number) {
+  ctx.fillStyle = '#fff';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 3;
+  ctx.fillText(text, cx, cy);
+  ctx.shadowBlur = 0;
+}
+
 function drawDiamond(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -202,7 +208,6 @@ function render() {
   ctx.fillStyle = '#1a1a1a';
   ctx.fillRect(0, 0, w, h);
 
-  // Determine visible region range
   const topLeft = canvasToWorld(0, 0);
   const bottomRight = canvasToWorld(w, h);
 
@@ -211,7 +216,6 @@ function render() {
   const minRZ = Math.floor(topLeft.wz / TILE_SIZE) - 1;
   const maxRZ = Math.floor(bottomRight.wz / TILE_SIZE) + 1;
 
-  // Draw tiles
   for (const region of regions.value) {
     if (
       region.regionX < minRX ||
@@ -224,7 +228,6 @@ function render() {
     const key = tileKey(region.regionX, region.regionZ);
     const img = tileCache.get(key);
 
-    // World position = regionCoord * 512
     const worldX = region.regionX * TILE_SIZE;
     const worldZ = region.regionZ * TILE_SIZE;
     const { cx, cz } = worldToCanvas(worldX, worldZ);
@@ -252,25 +255,15 @@ function render() {
     }
   }
 
-  // Custom map markers
   const dimMarkers = markers.value.filter((m) => m.dimension === dimension.value);
   for (const marker of dimMarkers) {
     const { cx, cz } = worldToCanvas(marker.x, marker.z);
     if (cx < -40 || cx > w + 40 || cz < -40 || cz > h + 40) continue;
 
     drawDiamond(ctx, cx, cz, 8, marker.color);
-
-    // Name label
-    ctx.fillStyle = '#fff';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur = 3;
-    ctx.fillText(marker.name, cx, cz - 12);
-    ctx.shadowBlur = 0;
+    drawLabel(ctx, marker.name, cx, cz - 12);
   }
 
-  // Player markers
   const dimPlayers = players.value.filter((p) => p.dimension === dimension.value);
   for (const player of dimPlayers) {
     const { cx, cz } = worldToCanvas(player.x, player.z);
@@ -278,7 +271,6 @@ function render() {
 
     const headImg = headCache.get(player.name);
     if (headImg) {
-      // Draw player head with a white border
       const half = HEAD_SIZE / 2;
       ctx.save();
       ctx.shadowColor = 'rgba(0,0,0,0.5)';
@@ -290,7 +282,6 @@ function render() {
       ctx.drawImage(headImg, cx - half, cz - half, HEAD_SIZE, HEAD_SIZE);
       ctx.restore();
     } else {
-      // Fallback dot while head loads
       loadPlayerHead(player.name);
       ctx.beginPath();
       ctx.arc(cx, cz, 5, 0, Math.PI * 2);
@@ -301,14 +292,7 @@ function render() {
       ctx.stroke();
     }
 
-    // Name label
-    ctx.fillStyle = '#fff';
-    ctx.font = '11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur = 3;
-    ctx.fillText(player.name, cx, cz - HEAD_SIZE / 2 - 4);
-    ctx.shadowBlur = 0;
+    drawLabel(ctx, player.name, cx, cz - HEAD_SIZE / 2 - 4);
   }
 
   animFrameId = requestAnimationFrame(render);
@@ -508,13 +492,7 @@ async function refresh() {
   await Promise.all([loadRegions(), loadPlayers(), loadMarkers()]);
 }
 
-watch(dimension, () => {
-  tileCache.clear();
-  tileLoading.clear();
-  loadRegions();
-  loadPlayers();
-  loadMarkers();
-});
+watch(dimension, refresh);
 
 let resizeObserver: ResizeObserver | null = null;
 
@@ -525,7 +503,6 @@ onMounted(() => {
   loadMarkers();
   animFrameId = requestAnimationFrame(render);
   window.addEventListener('resize', resizeCanvas);
-  // Detect when the component becomes visible (v-show)
   const wrapper = canvasRef.value?.parentElement;
   if (wrapper) {
     resizeObserver = new ResizeObserver(() => resizeCanvas());
@@ -542,7 +519,6 @@ onUnmounted(() => {
 
 <template>
   <div class="map-view">
-    <!-- Toolbar -->
     <div class="map-toolbar">
       <div class="dimension-tabs">
         <button
@@ -575,7 +551,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Canvas area -->
     <div class="map-canvas-wrapper">
       <div v-if="loading && regions.length === 0" class="map-overlay">
         <span class="map-loading">Loading map data...</span>
@@ -598,7 +573,6 @@ onUnmounted(() => {
         @contextmenu.prevent="onContextMenu"
       />
 
-      <!-- Marker popup -->
       <div
         v-if="markerPopup.visible"
         class="marker-popup"
@@ -776,7 +750,6 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-/* Marker popup */
 .marker-popup {
   position: absolute;
   z-index: 10;

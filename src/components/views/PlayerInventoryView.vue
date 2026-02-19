@@ -103,7 +103,6 @@ function formatPosition(x: number, y: number, z: number): string {
 
 <template>
   <div class="inventory-view">
-    <!-- Header -->
     <div class="panel-header">
       <button class="back-btn" title="Back to players" @click="emit('back')">
         <svg
@@ -232,13 +231,10 @@ function formatPosition(x: number, y: number, z: number): string {
       </button>
     </div>
 
-    <!-- Loading / Error -->
     <div v-if="loading" class="panel-body state-msg">Loading inventory...</div>
     <div v-else-if="error" class="panel-body state-msg err">{{ error }}</div>
 
-    <!-- Inventory -->
     <div v-else-if="player" class="panel-body">
-      <!-- Tab bar -->
       <div class="tab-bar">
         <button
           :class="['tab-btn', { active: activeTab === 'inventory' }]"
@@ -254,7 +250,6 @@ function formatPosition(x: number, y: number, z: number): string {
         </button>
       </div>
 
-      <!-- Stats grid -->
       <div class="stats-grid">
         <div class="stat-item disabled" title="Not yet implemented by Pumpkin">
           <span class="stat-label">Playtime</span>
@@ -308,7 +303,6 @@ function formatPosition(x: number, y: number, z: number): string {
         </div>
       </div>
 
-      <!-- Inventory tab -->
       <template v-if="activeTab === 'inventory'">
         <div class="inv-row">
           <div class="inv-main">
@@ -341,7 +335,6 @@ function formatPosition(x: number, y: number, z: number): string {
         </div>
       </template>
 
-      <!-- Ender Chest tab -->
       <template v-if="activeTab === 'enderchest'">
         <div class="section-label">Ender Chest</div>
         <div class="inv-grid">
@@ -361,7 +354,6 @@ function formatPosition(x: number, y: number, z: number): string {
   overflow-y: auto;
 }
 
-/* Header */
 .panel-header {
   display: flex;
   align-items: center;
@@ -490,7 +482,6 @@ function formatPosition(x: number, y: number, z: number): string {
   cursor: not-allowed;
 }
 
-/* Body */
 .panel-body {
   padding: 18px 20px;
 }
@@ -506,7 +497,6 @@ function formatPosition(x: number, y: number, z: number): string {
   color: var(--color-danger);
 }
 
-/* Tab bar */
 .tab-bar {
   display: flex;
   gap: 4px;
@@ -538,7 +528,6 @@ function formatPosition(x: number, y: number, z: number): string {
   border-color: var(--color-primary);
 }
 
-/* Stats grid */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -579,7 +568,6 @@ function formatPosition(x: number, y: number, z: number): string {
   color: var(--text-dim);
 }
 
-/* Inventory layout */
 .inv-row {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
@@ -601,14 +589,12 @@ function formatPosition(x: number, y: number, z: number): string {
   margin-bottom: 6px;
 }
 
-/* 9-column grid */
 .inv-grid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   gap: 3px;
 }
 
-/* Equipment column */
 .inv-equip {
   display: flex;
   flex-direction: column;
@@ -622,7 +608,6 @@ function formatPosition(x: number, y: number, z: number): string {
   flex: 1;
 }
 
-/* Header actions */
 .header-actions {
   display: flex;
   flex-wrap: wrap;

@@ -18,10 +18,7 @@ function getPoints(history: number[], maxValue: number): string {
 
 function getFillPoints(history: number[], maxValue: number): string {
   if (!history || history.length <= 1) return '';
-  const linePoints = history
-    .map((v, i, arr) => `${(i / (arr.length - 1 || 1)) * 100},${40 - (v / maxValue) * 40}`)
-    .join(' ');
-  return `0,40 ${linePoints} 100,40`;
+  return `0,40 ${getPoints(history, maxValue)} 100,40`;
 }
 </script>
 

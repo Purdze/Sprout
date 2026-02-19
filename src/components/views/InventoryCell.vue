@@ -44,28 +44,11 @@ function onIconError(e: Event) {
 </template>
 
 <style scoped>
-.inv-cell {
-  background: var(--bg-dark);
-  border: 1px solid #2a2a2a;
-  border-radius: 3px;
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.inv-cell.empty {
-  background: #131313;
-  border-color: #1e1e1e;
-}
-
+.inv-cell,
 .equip-cell {
   background: var(--bg-dark);
   border: 1px solid #2a2a2a;
   border-radius: 3px;
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -73,6 +56,10 @@ function onIconError(e: Event) {
   overflow: hidden;
 }
 
+.inv-cell { aspect-ratio: 1; }
+.equip-cell { flex: 1; }
+
+.inv-cell.empty,
 .equip-cell.empty {
   background: #131313;
   border-color: #1e1e1e;

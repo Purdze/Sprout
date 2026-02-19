@@ -19,7 +19,6 @@ const selectedDirectory = ref('config');
 const copied = ref(false);
 const directories = ['config', 'data', 'worlds', 'logs', 'plugins'];
 
-// Load config files when directory changes
 watch(
   selectedDirectory,
   (dir) => {
@@ -31,7 +30,6 @@ watch(
   { immediate: true }
 );
 
-// Select first file when list changes
 watch(
   () => props.server.configFiles,
   (files) => {
@@ -42,7 +40,6 @@ watch(
   }
 );
 
-// Update content when server content changes
 watch(
   () => props.server.configContent,
   (content) => {

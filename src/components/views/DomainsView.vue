@@ -131,7 +131,6 @@ onMounted(async () => {
 
 <template>
   <div class="domains-view">
-    <!-- State 1: No token -->
     <div v-if="!token" class="domains-connect">
       <div class="connect-card">
         <FontAwesomeIcon :icon="['fab', 'cloudflare']" class="cf-icon" />
@@ -178,7 +177,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- State 2: Connected -->
     <template v-else>
       <div class="domains-sidebar">
         <div class="domains-sidebar-header">
@@ -222,7 +220,6 @@ onMounted(async () => {
             </button>
           </div>
 
-          <!-- Create form -->
           <div v-if="showCreateForm" class="create-form">
             <div class="form-row">
               <div class="form-group">
@@ -261,7 +258,6 @@ onMounted(async () => {
             <div v-if="createError" class="create-error">{{ createError }}</div>
           </div>
 
-          <!-- Records list -->
           <div class="records-list">
             <div v-if="recordsLoading" class="records-loading">Loading records...</div>
             <div v-else-if="records.length === 0" class="records-empty">
@@ -293,7 +289,6 @@ onMounted(async () => {
   background: var(--bg-darkest);
 }
 
-/* Connect screen */
 .domains-connect {
   flex: 1;
   display: flex;
@@ -448,7 +443,6 @@ onMounted(async () => {
   width: 100%;
 }
 
-/* Sidebar */
 .domains-sidebar {
   width: 200px;
   background: var(--bg-dark);
@@ -520,7 +514,6 @@ onMounted(async () => {
   font-style: italic;
 }
 
-/* Main panel */
 .domains-main {
   flex: 1;
   display: flex;
@@ -564,7 +557,6 @@ onMounted(async () => {
   background: var(--color-primary-hover);
 }
 
-/* Create form */
 .create-form {
   padding: 12px;
   background: var(--bg-dark);
@@ -680,7 +672,6 @@ onMounted(async () => {
   margin-top: 8px;
 }
 
-/* Records list */
 .records-list {
   flex: 1;
   overflow-y: auto;

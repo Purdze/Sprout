@@ -7,22 +7,21 @@ const props = defineProps<{
   server: Server;
 }>();
 
-// Dynamic scaling - use actual max with 20% headroom, minimum floor for visibility
 const maxCpu = computed(() => {
   const history = props.server.cpuHistory || [];
   if (history.length === 0) return 10;
   const max = Math.max(...history);
-  return Math.max(max * 1.2, 5); // At least 5% scale for visibility
+  return Math.max(max * 1.2, 5);
 });
 
 const maxMemory = computed(() => {
   const history = props.server.memoryHistory || [];
   if (history.length === 0) return 100;
   const max = Math.max(...history);
-  return Math.max(max * 1.2, 50); // At least 50MB scale
+  return Math.max(max * 1.2, 50);
 });
 
-const maxTps = computed(() => 20); // TPS is always 0-20
+const maxTps = computed(() => 20);
 </script>
 
 <template>

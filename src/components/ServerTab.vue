@@ -31,7 +31,6 @@ const selectedPlayer = ref('');
 
 <template>
   <div class="server-tab">
-    <!-- Stats Bar -->
     <div class="stats-bar">
       <div class="stat">
         <span class="stat-label">Status</span>
@@ -71,7 +70,6 @@ const selectedPlayer = ref('');
       </div>
     </div>
 
-    <!-- View Tabs -->
     <div class="view-tabs">
       <button
         :class="['view-tab', { active: activeView === 'console' }]"
@@ -108,7 +106,6 @@ const selectedPlayer = ref('');
       </button>
     </div>
 
-    <!-- Views -->
     <ConsoleView
       v-show="activeView === 'console'"
       :server="server"

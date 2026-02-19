@@ -51,21 +51,22 @@ async function addServer(name: string, path: string) {
   await saveConfig();
 }
 
-function removeServer(index: number) {
+function removeServerByIndex(index: number) {
   servers.value.splice(index, 1);
   if (activeTab.value >= servers.value.length) {
     activeTab.value = Math.max(0, servers.value.length - 1);
   }
+}
+
+function removeServer(index: number) {
+  removeServerByIndex(index);
   saveConfig();
 }
 
 function handleServerRemoved(serverId: string) {
   const index = servers.value.findIndex((s) => s.id === serverId);
   if (index !== -1) {
-    servers.value.splice(index, 1);
-    if (activeTab.value >= servers.value.length) {
-      activeTab.value = Math.max(0, servers.value.length - 1);
-    }
+    removeServerByIndex(index);
   }
 }
 
@@ -81,7 +82,6 @@ async function loadConfig() {
   try {
     const config = await invoke<Server[]>('load_config');
 
-    // Check if we're loading a specific server (from URL param)
     const urlParams = new URLSearchParams(window.location.search);
     const serverId = urlParams.get('serverId');
 
@@ -90,7 +90,6 @@ async function loadConfig() {
       filteredConfig = config.filter((s) => s.id === serverId);
     }
 
-    // Ensure all servers have the required arrays initialized
     servers.value = filteredConfig.map((s) => withServerDefaults(s));
   } catch (e) {
     console.error('Failed to load config:', e);
@@ -124,14 +123,7 @@ async function saveConfigFile(server: Server, dir: string, file: string, content
   }
 }
 
-function onBodyDragOver(event: DragEvent) {
-  event.preventDefault();
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move';
-  }
-}
-
-function onBodyDragEnter(event: DragEvent) {
+function onBodyDrag(event: DragEvent) {
   event.preventDefault();
   if (event.dataTransfer) {
     event.dataTransfer.dropEffect = 'move';
@@ -177,28 +169,21 @@ async function sendCommand(server: Server, command: string) {
 onMounted(async () => {
   await loadConfig();
 
-  // Listen for servers transferred from other windows
   unlistenTransfer = await listen<{ server: string; targetWindow: string; sourceWindow: string }>(
     'transfer-server',
     async (event) => {
       if (event.payload.targetWindow === currentWindowLabel) {
         const server = JSON.parse(event.payload.server) as Server;
-        // Add if not already present
         if (!servers.value.find((s) => s.id === server.id)) {
           servers.value.push(withServerDefaults({ ...server, logs: [] }));
           activeTab.value = servers.value.length - 1;
         }
       }
-      // If this window is the source, remove the server
       if (event.payload.sourceWindow === currentWindowLabel) {
         const server = JSON.parse(event.payload.server) as Server;
         const index = servers.value.findIndex((s) => s.id === server.id);
         if (index !== -1) {
-          servers.value.splice(index, 1);
-          if (activeTab.value >= servers.value.length) {
-            activeTab.value = Math.max(0, servers.value.length - 1);
-          }
-          // Close this window if no more servers
+          removeServerByIndex(index);
           if (servers.value.length === 0) {
             const currentWindow = getCurrentWebviewWindow();
             if (currentWindow.label !== 'main') {
@@ -210,7 +195,6 @@ onMounted(async () => {
     }
   );
 
-  // Listen for drop requests from other windows
   await listen<{ x: number; y: number; server: string; sourceWindow: string }>(
     'check-drop-target',
     async (event) => {
@@ -221,14 +205,12 @@ onMounted(async () => {
       const size = await currentWindow.outerSize();
 
       const { x, y } = event.payload;
-      // Check if coordinates are within this window
       if (
         x >= position.x &&
         x <= position.x + size.width &&
         y >= position.y &&
         y <= position.y + size.height
       ) {
-        // This window is the drop target
         await tauriEmit('transfer-server', {
           server: event.payload.server,
           targetWindow: currentWindowLabel,
@@ -238,21 +220,17 @@ onMounted(async () => {
     }
   );
 
-  // Listen for server log events
   unlistenLog = await listen<{ id: string; log: string }>('server-log', (event) => {
     const server = servers.value.find((s) => s.id === event.payload.id);
     if (server) {
       server.logs.push(event.payload.log);
-      // Keep only last 1000 lines
       if (server.logs.length > 1000) {
         server.logs.shift();
       }
-      // Parse log for player count updates
       parseLogForStats(server, event.payload.log);
     }
   });
 
-  // Poll system stats
   statsInterval = setInterval(updateStats, 2000);
 });
 
@@ -262,7 +240,7 @@ onUnmounted(() => {
   if (statsInterval) clearInterval(statsInterval);
 });
 
-const MAX_HISTORY = 60; // Keep last 60 data points (2 minutes at 2s intervals)
+const MAX_HISTORY = 60; // 2 minutes at 2s intervals
 
 async function updateStats() {
   for (const server of servers.value) {
@@ -272,12 +250,10 @@ async function updateStats() {
         server.cpu = cpu;
         server.memory = memory / 1024 / 1024; // Convert to MB
 
-        // Update history
         server.cpuHistory.push(cpu);
         server.memoryHistory.push(server.memory);
         server.tpsHistory.push(server.tps);
 
-        // Keep only last MAX_HISTORY points
         if (server.cpuHistory.length > MAX_HISTORY) server.cpuHistory.shift();
         if (server.memoryHistory.length > MAX_HISTORY) server.memoryHistory.shift();
         if (server.tpsHistory.length > MAX_HISTORY) server.tpsHistory.shift();
@@ -289,7 +265,6 @@ async function updateStats() {
 }
 
 function parseLogForStats(server: Server, log: string) {
-  // Parse player join/leave messages
   const joinMatch = log.match(/(\w+) joined the game/);
   const leaveMatch = log.match(/(\w+) left the game/);
   if (joinMatch) {
@@ -315,10 +290,9 @@ function parseLogForStats(server: Server, log: string) {
 <template>
   <div
     :class="['app', { 'dragging-active': draggingTab !== null }]"
-    @dragover="onBodyDragOver"
-    @dragenter="onBodyDragEnter"
+    @dragover="onBodyDrag"
+    @dragenter="onBodyDrag"
   >
-    <!-- Tab Bar -->
     <TabBar
       :servers="servers"
       :active-tab="activeTab"
@@ -329,7 +303,6 @@ function parseLogForStats(server: Server, log: string) {
       @server-removed="handleServerRemoved"
     />
 
-    <!-- Server Content -->
     <div v-if="servers.length > 0" class="content">
       <ServerTab
         :server="servers[activeTab]"
@@ -345,13 +318,11 @@ function parseLogForStats(server: Server, log: string) {
       />
     </div>
 
-    <!-- Empty State -->
     <div v-else class="empty-state">
       <h2>No Servers</h2>
       <p>Click the + button to add a server</p>
     </div>
 
-    <!-- Add Server Dialog -->
     <AddServerDialog v-model:show="showAddDialog" @add="addServer" />
   </div>
 </template>

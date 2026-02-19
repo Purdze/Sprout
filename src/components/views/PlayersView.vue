@@ -287,11 +287,7 @@ const filteredPlayers = computed(() => {
   color: #000;
 }
 
-.player-btn.ban {
-  background: var(--color-danger);
-  color: var(--text-primary);
-}
-
+.player-btn.ban,
 .player-btn.banip {
   background: var(--color-danger);
   color: var(--text-primary);
