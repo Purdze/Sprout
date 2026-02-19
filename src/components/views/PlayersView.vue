@@ -98,11 +98,7 @@ const filteredPlayers = computed(() => {
     <div v-else :class="['player-list', playerViewMode]">
       <div v-for="player in filteredPlayers" :key="player" :class="['player-item', playerViewMode]">
         <div class="player-identity" @click="emit('viewInventory', player)">
-          <img
-            class="player-avatar"
-            :src="getPlayerAvatarUrl(player, 36)"
-            :alt="player"
-          />
+          <img class="player-avatar" :src="getPlayerAvatarUrl(player, 36)" :alt="player" />
           <span class="player-name">{{ player }}</span>
           <span :class="['status-dot', { online: onlinePlayers.has(player) }]" />
         </div>

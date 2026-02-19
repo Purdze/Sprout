@@ -31,12 +31,7 @@ function onIconError(e: Event) {
     :title="item ? formatMinecraftId(item.id) : ''"
   >
     <template v-if="item">
-      <img
-        class="item-icon"
-        :src="itemIconUrl(item.id)"
-        :alt="item.name"
-        @error="onIconError"
-      />
+      <img class="item-icon" :src="itemIconUrl(item.id)" :alt="item.name" @error="onIconError" />
       <span class="cell-fallback" style="display: none">{{ formatMinecraftId(item.id) }}</span>
       <span v-if="item.count > 1" class="cell-count">{{ item.count }}</span>
     </template>
@@ -56,8 +51,12 @@ function onIconError(e: Event) {
   overflow: hidden;
 }
 
-.inv-cell { aspect-ratio: 1; }
-.equip-cell { flex: 1; }
+.inv-cell {
+  aspect-ratio: 1;
+}
+.equip-cell {
+  flex: 1;
+}
 
 .inv-cell.empty,
 .equip-cell.empty {

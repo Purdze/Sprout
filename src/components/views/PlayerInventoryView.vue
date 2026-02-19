@@ -119,11 +119,7 @@ function formatPosition(x: number, y: number, z: number): string {
           <path d="M12 19l-7-7 7-7" />
         </svg>
       </button>
-      <img
-        class="player-head"
-        :src="getPlayerAvatarUrl(playerName, 56)"
-        :alt="playerName"
-      />
+      <img class="player-head" :src="getPlayerAvatarUrl(playerName, 56)" :alt="playerName" />
       <div class="header-info">
         <h2 class="player-title">
           {{ playerName }}
@@ -314,7 +310,12 @@ function formatPosition(x: number, y: number, z: number): string {
           <div class="inv-equip">
             <div class="section-label">Armor</div>
             <div class="equip-cells">
-              <InventoryCell v-for="slot in armorSlots" :key="slot" :item="getSlotItem(slot)" variant="equip" />
+              <InventoryCell
+                v-for="slot in armorSlots"
+                :key="slot"
+                :item="getSlotItem(slot)"
+                variant="equip"
+              />
             </div>
           </div>
         </div>
