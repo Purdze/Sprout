@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::{BufRead, BufReader, Cursor, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use sysinfo::{Pid, System};
@@ -13,6 +13,8 @@ use flate2::read::GzDecoder;
 use std::io::Read;
 use tauri::{AppHandle, Emitter, Manager, State};
 use futures_util::StreamExt;
+use base64::Engine;
+use fastanvil::Chunk as _;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
@@ -1815,6 +1817,565 @@ fn save_window_state(state: &WindowState) {
     }
 }
 
+// ── Map viewer types ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapRegionInfo {
+    pub region_x: i32,
+    pub region_z: i32,
+    pub file_name: String,
+    pub size_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapTileResponse {
+    pub region_x: i32,
+    pub region_z: i32,
+    pub image_base64: String,
+    pub from_cache: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MapPlayerMarker {
+    pub name: String,
+    pub uuid: String,
+    pub x: f64,
+    pub z: f64,
+    pub dimension: String,
+}
+
+fn block_color_map() -> HashMap<&'static str, [u8; 3]> {
+    // Pumpkin stores block names WITHOUT the "minecraft:" prefix,
+    // so all keys here use the short form.
+    let mut m = HashMap::new();
+    // Terrain
+    m.insert("grass_block", [124, 189, 71]);
+    m.insert("short_grass", [124, 189, 71]);
+    m.insert("tall_grass", [124, 189, 71]);
+    m.insert("dirt", [134, 96, 67]);
+    m.insert("coarse_dirt", [119, 85, 59]);
+    m.insert("rooted_dirt", [121, 87, 61]);
+    m.insert("dirt_path", [148, 121, 65]);
+    m.insert("farmland", [110, 78, 47]);
+    m.insert("mud", [60, 57, 54]);
+    m.insert("stone", [125, 125, 125]);
+    m.insert("cobblestone", [120, 120, 120]);
+    m.insert("mossy_cobblestone", [105, 120, 100]);
+    m.insert("deepslate", [80, 80, 84]);
+    m.insert("cobbled_deepslate", [77, 77, 81]);
+    m.insert("bedrock", [85, 85, 85]);
+    m.insert("gravel", [130, 126, 126]);
+    m.insert("sand", [219, 207, 163]);
+    m.insert("red_sand", [190, 102, 33]);
+    m.insert("sandstone", [216, 203, 155]);
+    m.insert("red_sandstone", [186, 99, 30]);
+    m.insert("clay", [160, 166, 179]);
+    m.insert("terracotta", [152, 94, 67]);
+    m.insert("white_terracotta", [210, 178, 161]);
+    m.insert("orange_terracotta", [162, 84, 38]);
+    m.insert("yellow_terracotta", [186, 133, 35]);
+    m.insert("brown_terracotta", [77, 51, 36]);
+    m.insert("red_terracotta", [143, 61, 47]);
+    m.insert("light_gray_terracotta", [135, 107, 98]);
+    m.insert("mycelium", [111, 99, 107]);
+    m.insert("podzol", [90, 63, 24]);
+    m.insert("soul_sand", [81, 62, 50]);
+    m.insert("soul_soil", [75, 57, 46]);
+    // Water & Ice
+    m.insert("water", [63, 118, 228]);
+    m.insert("ice", [145, 190, 255]);
+    m.insert("packed_ice", [131, 175, 247]);
+    m.insert("blue_ice", [116, 167, 253]);
+    m.insert("frosted_ice", [140, 185, 250]);
+    // Lava
+    m.insert("lava", [207, 92, 15]);
+    // Wood & Logs
+    m.insert("oak_log", [109, 85, 50]);
+    m.insert("spruce_log", [58, 37, 16]);
+    m.insert("birch_log", [216, 208, 182]);
+    m.insert("jungle_log", [85, 68, 25]);
+    m.insert("acacia_log", [103, 96, 86]);
+    m.insert("dark_oak_log", [60, 46, 26]);
+    m.insert("mangrove_log", [84, 56, 40]);
+    m.insert("cherry_log", [53, 25, 32]);
+    m.insert("oak_planks", [162, 130, 78]);
+    m.insert("spruce_planks", [115, 85, 49]);
+    m.insert("birch_planks", [196, 179, 123]);
+    m.insert("jungle_planks", [160, 115, 80]);
+    m.insert("acacia_planks", [168, 90, 50]);
+    m.insert("dark_oak_planks", [67, 43, 20]);
+    // Leaves
+    m.insert("oak_leaves", [59, 122, 23]);
+    m.insert("spruce_leaves", [52, 80, 52]);
+    m.insert("birch_leaves", [80, 132, 55]);
+    m.insert("jungle_leaves", [47, 120, 10]);
+    m.insert("acacia_leaves", [46, 114, 6]);
+    m.insert("dark_oak_leaves", [39, 97, 14]);
+    m.insert("azalea_leaves", [70, 120, 35]);
+    m.insert("mangrove_leaves", [55, 110, 18]);
+    m.insert("cherry_leaves", [228, 175, 195]);
+    // Vegetation
+    m.insert("fern", [90, 150, 45]);
+    m.insert("large_fern", [90, 150, 45]);
+    m.insert("dead_bush", [107, 78, 36]);
+    m.insert("lily_pad", [33, 128, 27]);
+    m.insert("vine", [52, 128, 28]);
+    m.insert("moss_block", [89, 109, 45]);
+    m.insert("moss_carpet", [89, 109, 45]);
+    m.insert("sweet_berry_bush", [49, 95, 20]);
+    m.insert("cactus", [85, 127, 44]);
+    m.insert("sugar_cane", [148, 192, 101]);
+    m.insert("bamboo", [93, 144, 19]);
+    m.insert("seagrass", [42, 107, 33]);
+    m.insert("tall_seagrass", [42, 107, 33]);
+    m.insert("kelp", [60, 110, 31]);
+    m.insert("kelp_plant", [60, 110, 31]);
+    // Flowers
+    m.insert("dandelion", [210, 210, 50]);
+    m.insert("poppy", [200, 30, 30]);
+    m.insert("blue_orchid", [35, 150, 220]);
+    m.insert("sunflower", [240, 210, 40]);
+    // Ores
+    m.insert("coal_ore", [105, 105, 105]);
+    m.insert("iron_ore", [136, 130, 126]);
+    m.insert("gold_ore", [143, 140, 125]);
+    m.insert("diamond_ore", [129, 140, 143]);
+    m.insert("emerald_ore", [115, 136, 120]);
+    m.insert("lapis_ore", [100, 110, 140]);
+    m.insert("redstone_ore", [140, 109, 109]);
+    m.insert("copper_ore", [124, 125, 120]);
+    // Building blocks
+    m.insert("bricks", [150, 97, 83]);
+    m.insert("stone_bricks", [122, 122, 122]);
+    m.insert("mossy_stone_bricks", [105, 122, 100]);
+    m.insert("obsidian", [15, 10, 24]);
+    m.insert("crying_obsidian", [32, 10, 60]);
+    m.insert("netherrack", [97, 38, 38]);
+    m.insert("nether_bricks", [44, 22, 26]);
+    m.insert("basalt", [73, 72, 77]);
+    m.insert("blackstone", [42, 36, 41]);
+    m.insert("end_stone", [219, 222, 158]);
+    m.insert("end_stone_bricks", [218, 224, 162]);
+    m.insert("purpur_block", [170, 126, 170]);
+    m.insert("prismarine", [99, 172, 158]);
+    m.insert("dark_prismarine", [51, 91, 75]);
+    m.insert("glowstone", [171, 131, 84]);
+    m.insert("tuff", [108, 109, 102]);
+    m.insert("calcite", [224, 225, 221]);
+    m.insert("dripstone_block", [134, 107, 92]);
+    m.insert("amethyst_block", [133, 97, 191]);
+    // Snow
+    m.insert("snow", [249, 254, 254]);
+    m.insert("snow_block", [249, 254, 254]);
+    m.insert("powder_snow", [248, 253, 253]);
+    // Nether
+    m.insert("crimson_nylium", [130, 31, 31]);
+    m.insert("warped_nylium", [41, 122, 109]);
+    m.insert("crimson_stem", [92, 25, 29]);
+    m.insert("warped_stem", [42, 101, 98]);
+    m.insert("nether_wart_block", [114, 2, 2]);
+    m.insert("warped_wart_block", [22, 126, 115]);
+    m.insert("shroomlight", [240, 146, 70]);
+    m.insert("magma_block", [142, 63, 31]);
+    // Mushrooms
+    m.insert("brown_mushroom_block", [149, 111, 81]);
+    m.insert("red_mushroom_block", [183, 28, 28]);
+    m.insert("mushroom_stem", [203, 196, 185]);
+    // Concrete / Wool (common ones)
+    m.insert("white_concrete", [207, 213, 214]);
+    m.insert("white_wool", [234, 236, 236]);
+    m.insert("black_concrete", [8, 10, 15]);
+    m.insert("gray_concrete", [54, 57, 61]);
+    m.insert("light_gray_concrete", [125, 125, 115]);
+    m
+}
+
+fn region_dir_for_dimension(server_path: &str, dimension: &str) -> PathBuf {
+    let base = PathBuf::from(server_path).join("world");
+    match dimension {
+        "overworld" => base.join("region"),
+        "nether" => base.join("DIM-1").join("region"),
+        "end" => base.join("DIM1").join("region"),
+        _ => base.join("region"),
+    }
+}
+
+fn get_map_cache_dir(server_path: &str, dimension: &str) -> PathBuf {
+    let dir = PathBuf::from(server_path)
+        .join(".sprout-cache")
+        .join("map")
+        .join(dimension);
+    fs::create_dir_all(&dir).ok();
+    dir
+}
+
+fn is_cache_valid(mca_path: &Path, cache_path: &Path) -> bool {
+    if !cache_path.exists() {
+        return false;
+    }
+    let mca_modified = fs::metadata(mca_path)
+        .and_then(|m| m.modified())
+        .ok();
+    let cache_modified = fs::metadata(cache_path)
+        .and_then(|m| m.modified())
+        .ok();
+    match (mca_modified, cache_modified) {
+        (Some(mca_t), Some(cache_t)) => cache_t >= mca_t,
+        _ => false,
+    }
+}
+
+fn render_region_tile(mca_path: &Path, colors: &HashMap<&str, [u8; 3]>) -> Result<Vec<u8>, String> {
+    let file = fs::File::open(mca_path)
+        .map_err(|e| format!("Failed to open region file: {}", e))?;
+    let mut region = fastanvil::Region::from_stream(file)
+        .map_err(|e| format!("Failed to read region: {}", e))?;
+
+    // Pass 1: Build heightmap and base color map
+    let mut heightmap = vec![i16::MIN; 512 * 512];
+    let mut base_colors = vec![[0u8; 3]; 512 * 512];
+
+    for chunk_z in 0..32 {
+        for chunk_x in 0..32 {
+            let chunk_data = match region.read_chunk(chunk_x as usize, chunk_z as usize) {
+                Ok(Some(data)) => data,
+                _ => continue,
+            };
+
+            let chunk = match fastanvil::complete::Chunk::from_bytes(&chunk_data) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+            for bx in 0..16usize {
+                for bz in 0..16usize {
+                    let y_range = chunk.y_range();
+                    let px = (chunk_x * 16 + bx as i32) as usize;
+                    let pz = (chunk_z * 16 + bz as i32) as usize;
+                    if px >= 512 || pz >= 512 { continue; }
+                    let idx = pz * 512 + px;
+
+                    for y in (y_range.start..y_range.end).rev() {
+                        if let Some(block) = chunk.block(bx, y, bz) {
+                            let raw_name: &str = block.name();
+                            let name = raw_name.strip_prefix("minecraft:").unwrap_or(raw_name);
+                            if name == "air" || name == "cave_air" || name == "void_air" {
+                                continue;
+                            }
+                            heightmap[idx] = y as i16;
+                            base_colors[idx] = colors.get(name).copied().unwrap_or([127, 127, 127]);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Pass 2: Apply relief shadow by comparing each column to its north neighbor (z-1).
+    // Light comes from the northwest, so height increase toward north = highlight,
+    // height decrease = shadow.
+    let mut pixels = vec![[0u8; 3]; 512 * 512];
+    for pz in 0..512usize {
+        for px in 0..512usize {
+            let idx = pz * 512 + px;
+            let h = heightmap[idx];
+            if h == i16::MIN {
+                // No block found — black
+                continue;
+            }
+
+            let base = base_colors[idx];
+
+            // Compare to north neighbor (pz - 1); fall back to south at tile edge
+            let neighbor_h = if pz > 0 {
+                heightmap[(pz - 1) * 512 + px]
+            } else if pz < 511 {
+                heightmap[(pz + 1) * 512 + px]
+            } else {
+                i16::MIN
+            };
+            let shadow = if neighbor_h == i16::MIN {
+                0i16
+            } else {
+                (h - neighbor_h).clamp(-10, 10)
+            };
+
+            // shadow > 0 means current is higher → lit face, brighten
+            // shadow < 0 means current is lower → shadowed, darken
+            // Scale: each block of height difference = ~3% brightness change
+            let factor = 1.0 + shadow as f64 * 0.03;
+
+            pixels[idx] = [
+                (base[0] as f64 * factor).clamp(0.0, 255.0) as u8,
+                (base[1] as f64 * factor).clamp(0.0, 255.0) as u8,
+                (base[2] as f64 * factor).clamp(0.0, 255.0) as u8,
+            ];
+        }
+    }
+
+    // Encode to PNG
+    let mut img_buf: image::ImageBuffer<image::Rgb<u8>, Vec<u8>> =
+        image::ImageBuffer::new(512, 512);
+    for (i, color) in pixels.iter().enumerate() {
+        let x = (i % 512) as u32;
+        let y = (i / 512) as u32;
+        img_buf.put_pixel(x, y, image::Rgb(*color));
+    }
+
+    let mut png_bytes = Vec::new();
+    let encoder = image::codecs::png::PngEncoder::new(Cursor::new(&mut png_bytes));
+    image::ImageEncoder::write_image(
+        encoder,
+        &img_buf,
+        512,
+        512,
+        image::ExtendedColorType::Rgb8,
+    )
+    .map_err(|e| format!("Failed to encode PNG: {}", e))?;
+
+    Ok(png_bytes)
+}
+
+#[tauri::command]
+fn list_map_regions(path: String, dimension: String) -> Result<Vec<MapRegionInfo>, String> {
+    let region_dir = region_dir_for_dimension(&path, &dimension);
+    if !region_dir.exists() {
+        return Ok(Vec::new());
+    }
+
+    let mut regions = Vec::new();
+    let entries = fs::read_dir(&region_dir).map_err(|e| e.to_string())?;
+    for entry in entries {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let file_name = entry.file_name().to_string_lossy().to_string();
+        if !file_name.ends_with(".mca") {
+            continue;
+        }
+        // Parse r.X.Z.mca
+        let parts: Vec<&str> = file_name.trim_end_matches(".mca").split('.').collect();
+        if parts.len() != 3 || parts[0] != "r" {
+            continue;
+        }
+        let region_x: i32 = match parts[1].parse() {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let region_z: i32 = match parts[2].parse() {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+        let size_bytes = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        regions.push(MapRegionInfo {
+            region_x,
+            region_z,
+            file_name,
+            size_bytes,
+        });
+    }
+    regions.sort_by(|a, b| a.region_x.cmp(&b.region_x).then(a.region_z.cmp(&b.region_z)));
+    Ok(regions)
+}
+
+#[tauri::command]
+async fn get_map_tile(
+    path: String,
+    dimension: String,
+    region_x: i32,
+    region_z: i32,
+) -> Result<MapTileResponse, String> {
+    let mca_name = format!("r.{}.{}.mca", region_x, region_z);
+    let region_dir = region_dir_for_dimension(&path, &dimension);
+    let mca_path = region_dir.join(&mca_name);
+
+    if !mca_path.exists() {
+        return Err(format!("Region file not found: {}", mca_name));
+    }
+
+    let cache_dir = get_map_cache_dir(&path, &dimension);
+    let cache_path = cache_dir.join(format!("{}.{}.png", region_x, region_z));
+
+    // Check cache
+    if is_cache_valid(&mca_path, &cache_path) {
+        let png_bytes = fs::read(&cache_path).map_err(|e| e.to_string())?;
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&png_bytes);
+        return Ok(MapTileResponse {
+            region_x,
+            region_z,
+            image_base64: b64,
+            from_cache: true,
+        });
+    }
+
+    // Render in blocking thread
+    let mca_path_clone = mca_path.clone();
+    let cache_path_clone = cache_path.clone();
+    let png_bytes = tokio::task::spawn_blocking(move || {
+        let colors = block_color_map();
+        let bytes = render_region_tile(&mca_path_clone, &colors)?;
+        // Write to cache
+        fs::write(&cache_path_clone, &bytes).ok();
+        Ok::<Vec<u8>, String>(bytes)
+    })
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
+    .map_err(|e: String| e)?;
+
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&png_bytes);
+    Ok(MapTileResponse {
+        region_x,
+        region_z,
+        image_base64: b64,
+        from_cache: false,
+    })
+}
+
+#[tauri::command]
+async fn get_map_players(id: String, path: String) -> Result<Vec<MapPlayerMarker>, String> {
+    // Get known players
+    let cache_path = sprout_players_path(&id);
+    let known_names: Vec<String> = if cache_path.exists() {
+        fs::read_to_string(&cache_path)
+            .ok()
+            .and_then(|c| serde_json::from_str(&c).ok())
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    let mut markers = Vec::new();
+    for name in &known_names {
+        let uuid = match resolve_player_uuid(&path, name).await {
+            Ok(u) => u,
+            Err(_) => continue,
+        };
+
+        let dat_path = PathBuf::from(&path)
+            .join("world")
+            .join("playerdata")
+            .join(format!("{}.dat", uuid));
+
+        if !dat_path.exists() {
+            continue;
+        }
+
+        let file = match fs::File::open(&dat_path) {
+            Ok(f) => f,
+            Err(_) => continue,
+        };
+        let mut decoder = GzDecoder::new(file);
+        let mut data = Vec::new();
+        if decoder.read_to_end(&mut data).is_err() {
+            continue;
+        }
+
+        let nbt: PlayerDatNbt = match fastnbt::from_bytes(&data) {
+            Ok(n) => n,
+            Err(_) => continue,
+        };
+
+        let (x, z) = match &nbt.pos {
+            Some(p) if p.len() >= 3 => (p[0], p[2]),
+            _ => continue,
+        };
+
+        let dimension = nbt
+            .dimension
+            .clone()
+            .unwrap_or_else(|| "minecraft:overworld".to_string());
+
+        // Normalize dimension to our short form
+        let dim_short = match dimension.as_str() {
+            "minecraft:overworld" => "overworld",
+            "minecraft:the_nether" => "nether",
+            "minecraft:the_end" => "end",
+            other => other,
+        };
+
+        markers.push(MapPlayerMarker {
+            name: name.clone(),
+            uuid: uuid.clone(),
+            x,
+            z,
+            dimension: dim_short.to_string(),
+        });
+    }
+
+    Ok(markers)
+}
+
+// --- Map Markers ---
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct MapMarker {
+    id: String,
+    name: String,
+    x: f64,
+    z: f64,
+    dimension: String,
+    color: String,
+}
+
+fn map_markers_path(server_id: &str) -> PathBuf {
+    get_server_data_dir(server_id).join("map_markers.json")
+}
+
+#[tauri::command]
+async fn load_map_markers(id: String) -> Result<Vec<MapMarker>, String> {
+    let path = map_markers_path(&id);
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read map markers: {}", e))?;
+    let markers: Vec<MapMarker> = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse map markers: {}", e))?;
+    Ok(markers)
+}
+
+#[tauri::command]
+async fn save_map_marker(id: String, marker: MapMarker) -> Result<(), String> {
+    let path = map_markers_path(&id);
+    let mut markers: Vec<MapMarker> = if path.exists() {
+        fs::read_to_string(&path)
+            .ok()
+            .and_then(|c| serde_json::from_str(&c).ok())
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+
+    if let Some(existing) = markers.iter_mut().find(|m| m.id == marker.id) {
+        *existing = marker;
+    } else {
+        markers.push(marker);
+    }
+
+    let json = serde_json::to_string_pretty(&markers).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| format!("Failed to write map markers: {}", e))?;
+    Ok(())
+}
+
+#[tauri::command]
+async fn delete_map_marker(id: String, marker_id: String) -> Result<(), String> {
+    let path = map_markers_path(&id);
+    if !path.exists() {
+        return Ok(());
+    }
+    let content = fs::read_to_string(&path)
+        .map_err(|e| format!("Failed to read map markers: {}", e))?;
+    let mut markers: Vec<MapMarker> = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse map markers: {}", e))?;
+
+    markers.retain(|m| m.id != marker_id);
+
+    let json = serde_json::to_string_pretty(&markers).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| format!("Failed to write map markers: {}", e))?;
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -1876,6 +2437,12 @@ fn main() {
             get_player_inventory_rcon,
             get_rcon_config,
             get_save_interval,
+            list_map_regions,
+            get_map_tile,
+            get_map_players,
+            load_map_markers,
+            save_map_marker,
+            delete_map_marker,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

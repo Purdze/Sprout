@@ -66,6 +66,37 @@ export interface RconConfig {
   password: string;
 }
 
+export interface MapRegionInfo {
+  regionX: number;
+  regionZ: number;
+  fileName: string;
+  sizeBytes: number;
+}
+
+export interface MapTileResponse {
+  regionX: number;
+  regionZ: number;
+  imageBase64: string;
+  fromCache: boolean;
+}
+
+export interface MapPlayerMarker {
+  name: string;
+  uuid: string;
+  x: number;
+  z: number;
+  dimension: string;
+}
+
+export interface MapMarker {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  dimension: string;
+  color: string;
+}
+
 export interface PlayerDetails {
   name: string;
   uuid: string;

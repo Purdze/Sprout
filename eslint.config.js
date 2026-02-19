@@ -34,7 +34,13 @@ export default [
         HTMLImageElement: 'readonly',
         HTMLCanvasElement: 'readonly',
         MouseEvent: 'readonly',
+        WheelEvent: 'readonly',
         Event: 'readonly',
+        Image: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        ResizeObserver: 'readonly',
+        CanvasRenderingContext2D: 'readonly',
       },
     },
     plugins: {
