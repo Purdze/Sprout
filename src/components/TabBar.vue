@@ -134,7 +134,7 @@ async function onTabDrop(event: DragEvent) {
     <button
       class="icon-btn donate-btn"
       title="Donate"
-      @click="open('https://paypal.me/richarddm')"
+      @click="open('https://github.com/sponsors/Purdze')"
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
         <path

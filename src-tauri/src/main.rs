@@ -1681,7 +1681,7 @@ async fn get_player_inventory_rcon(
             .trim()
             .trim_start_matches('[')
             .trim_end_matches(']');
-        let parts: Vec<f64> = raw.split(',').map(|s| parse_snbt_number(s)).collect();
+        let parts: Vec<f64> = raw.split(',').map(parse_snbt_number).collect();
         (
             parts.first().copied().unwrap_or(0.0),
             parts.get(1).copied().unwrap_or(0.0),
