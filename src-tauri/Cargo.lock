@@ -3480,7 +3480,7 @@ dependencies = [
 
 [[package]]
 name = "sprout"
-version = "1.0.3"
+version = "2.0.0"
 dependencies = [
  "dirs 5.0.1",
  "fastnbt",

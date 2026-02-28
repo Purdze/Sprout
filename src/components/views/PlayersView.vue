@@ -60,6 +60,11 @@ const filteredPlayers = computed(() => {
 <template>
   <div class="players-view">
     <div class="players-toolbar">
+      <div class="player-count-badge">
+        <span class="count-online">{{ onlinePlayers.size }}</span>
+        <span class="count-sep">/</span>
+        <span class="count-total">{{ allPlayers.length }}</span>
+      </div>
       <input v-model="playerSearch" class="player-search" placeholder="Search players..." />
       <div class="view-toggle">
         <button
@@ -89,10 +94,25 @@ const filteredPlayers = computed(() => {
     </div>
 
     <div v-if="allPlayers.length === 0" class="players-empty">
-      No players have joined this server yet
+      <svg
+        width="36"
+        height="36"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+      <span>No players have joined this server yet</span>
     </div>
     <div v-else-if="filteredPlayers.length === 0" class="players-empty">
-      No players match "{{ playerSearch }}"
+      <span>No players match "{{ playerSearch }}"</span>
     </div>
     <div v-else :class="['player-list', playerViewMode]">
       <div v-for="player in filteredPlayers" :key="player" :class="['player-item', playerViewMode]">
@@ -137,33 +157,66 @@ const filteredPlayers = computed(() => {
 .players-view {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
-  background: #0d0d0d;
+  padding: 18px;
+  background: var(--bg-base);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .players-toolbar {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
+}
+
+.player-count-badge {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.count-online {
+  color: var(--color-success);
+}
+
+.count-sep {
+  color: var(--text-faint);
+}
+
+.count-total {
+  color: var(--text-secondary);
 }
 
 .player-search {
   flex: 1;
-  padding: 8px 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
+  padding: 9px 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  transition: border-color var(--transition-fast);
+}
+
+.player-search:focus {
+  border-color: var(--accent);
 }
 
 .view-toggle {
   display: flex;
-  background: #1a1a1a;
-  border-radius: 6px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -171,27 +224,35 @@ const filteredPlayers = computed(() => {
   padding: 8px 10px;
   background: none;
   border: none;
-  color: #666;
+  color: var(--text-faint);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
 }
 
 .toggle-btn:hover {
-  color: #888;
+  color: var(--text-secondary);
 }
 
 .toggle-btn.active {
-  background: #333;
-  color: #fff;
+  background: var(--bg-active);
+  color: var(--text-primary);
 }
 
 .players-empty {
-  color: #444;
+  color: var(--text-faint);
   font-style: italic;
   text-align: center;
-  padding: 40px;
+  padding: 48px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  opacity: 0.5;
 }
 
 .player-list.grid {
@@ -206,24 +267,32 @@ const filteredPlayers = computed(() => {
   gap: 8px;
 }
 
-.player-item.grid {
+.player-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 12px;
-  background: #1a1a1a;
-  border-radius: 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.player-item:hover {
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.player-item.grid {
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
 }
 
 .player-item.list {
-  display: flex;
   flex-direction: row;
-  align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  background: #1a1a1a;
-  border-radius: 8px;
+  padding: 10px 14px;
 }
 
 .player-item.list .player-name {
@@ -238,26 +307,30 @@ const filteredPlayers = computed(() => {
 .player-avatar {
   width: 36px;
   height: 36px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   image-rendering: pixelated;
+  border: 1px solid var(--border-subtle);
 }
 
 .player-name {
-  color: #fff;
-  font-size: 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
   text-align: center;
+  transition: color var(--transition-fast);
 }
 
 .status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #555;
+  background: var(--text-faint);
   flex-shrink: 0;
 }
 
 .status-dot.online {
-  background: #4ade80;
+  background: var(--color-success);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.35);
 }
 
 .player-actions {
@@ -271,33 +344,34 @@ const filteredPlayers = computed(() => {
   padding: 4px 10px;
   border: none;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-ui);
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .player-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .player-btn.kick {
-  background: #f59e0b;
-  color: #000;
+  background: var(--color-warning);
+  color: #0a0a0f;
 }
 
-.player-btn.ban {
-  background: #ef4444;
-  color: #fff;
-}
-
+.player-btn.ban,
 .player-btn.banip {
-  background: #ef4444;
+  background: var(--color-danger);
   color: #fff;
 }
 
 .player-btn:hover:not(:disabled) {
-  opacity: 0.8;
+  opacity: 0.85;
+  transform: translateY(-1px);
 }
 
 .player-identity {
@@ -305,15 +379,15 @@ const filteredPlayers = computed(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--transition-fast);
 }
 
 .player-identity:hover {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .player-identity:hover .player-name {
-  color: #f97316;
+  color: var(--accent);
 }
 
 .player-item.grid .player-identity {

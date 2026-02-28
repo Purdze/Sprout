@@ -141,43 +141,58 @@ function close() {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: fade-in 150ms ease;
 }
 
 .dialog {
-  background: #252525;
-  border-radius: 12px;
-  padding: 24px;
-  min-width: 400px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  min-width: 420px;
+  box-shadow: var(--shadow-lg);
 }
 
 .dialog h3 {
-  margin: 0 0 16px;
-  color: #fff;
+  margin: 0 0 20px;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 4px;
-  color: #888;
-  font-size: 14px;
+  margin-bottom: 6px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .form-group input {
   width: 100%;
-  padding: 8px 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 14px;
+  padding: 9px 14px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-ui);
+  transition: border-color var(--transition-fast);
+}
+
+.form-group input:focus {
+  border-color: var(--accent);
 }
 
 .path-input {
@@ -190,42 +205,57 @@ function close() {
 }
 
 .btn {
-  padding: 8px 16px;
-  border-radius: 6px;
+  padding: 9px 18px;
+  border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  transition: all var(--transition-fast);
 }
 
 .btn.browse {
-  background: #444;
-  color: #fff;
+  background: var(--bg-active);
+  color: var(--text-primary);
   white-space: nowrap;
 }
 
 .btn.browse:hover {
-  background: #555;
+  background: var(--bg-hover);
 }
 
 .btn.primary {
-  background: #f97316;
+  background: var(--accent);
   color: #fff;
 }
 
+.btn.primary:hover {
+  background: var(--accent-hover);
+  box-shadow: 0 0 14px var(--accent-muted);
+}
+
 .btn.secondary {
-  background: #333;
-  color: #fff;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-default);
+}
+
+.btn.secondary:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .btn.download {
   width: 100%;
-  background: #1a6b3c;
+  background: #1a7d45;
   color: #fff;
-  padding: 10px 16px;
+  padding: 10px 18px;
 }
 
 .btn.download:hover {
-  background: #1e7d45;
+  background: #1e9050;
+  box-shadow: 0 0 12px rgba(26, 125, 69, 0.25);
 }
 
 .download-section {
@@ -235,37 +265,40 @@ function close() {
 .download-progress {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .progress-bar {
   width: 100%;
-  height: 8px;
-  background: #1a1a1a;
-  border-radius: 4px;
+  height: 6px;
+  background: var(--bg-base);
+  border-radius: 99px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: #f97316;
-  border-radius: 4px;
-  transition: width 0.2s ease;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px var(--accent-muted);
 }
 
 .progress-text {
-  color: #888;
-  font-size: 13px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .download-done {
-  color: #4ade80;
-  font-size: 14px;
+  color: var(--color-success);
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .download-error {
   color: #f87171;
-  font-size: 13px;
+  font-size: 12px;
   margin-top: 6px;
 }
 

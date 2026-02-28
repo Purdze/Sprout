@@ -30,46 +30,6 @@ const selectedPlayer = ref('');
 
 <template>
   <div class="server-tab">
-    <!-- Stats Bar -->
-    <div class="stats-bar">
-      <div class="stat">
-        <span class="stat-label">Status</span>
-        <span :class="['stat-value', 'status', server.status]">
-          {{ server.status.charAt(0).toUpperCase() + server.status.slice(1) }}
-        </span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">CPU</span>
-        <span class="stat-value">{{ server.cpu.toFixed(1) }}%</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Memory</span>
-        <span class="stat-value">{{ server.memory.toFixed(0) }} MB</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">TPS</span>
-        <span class="stat-value">{{ server.tps.toFixed(1) }}</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Players</span>
-        <span class="stat-value">{{ server.players }}/{{ server.maxPlayers }}</span>
-      </div>
-      <div class="controls">
-        <button class="btn clear" @click="emit('clear')">Clear</button>
-        <button v-if="server.status === 'stopped'" class="btn start" @click="emit('start')">
-          Start
-        </button>
-        <button
-          v-else
-          class="btn stop"
-          :disabled="server.status === 'starting'"
-          @click="emit('stop')"
-        >
-          Stop
-        </button>
-      </div>
-    </div>
-
     <!-- View Tabs -->
     <div class="view-tabs">
       <button
@@ -102,6 +62,64 @@ const selectedPlayer = ref('');
       >
         Domains
       </button>
+    </div>
+
+    <!-- Stats Strip -->
+    <div class="stats-strip">
+      <span :class="['status-dot', server.status]"></span>
+      <span :class="['strip-status', server.status]">{{
+        server.status.charAt(0).toUpperCase() + server.status.slice(1)
+      }}</span>
+      <span class="strip-sep"></span>
+      <span class="strip-stat"
+        ><span class="strip-label">CPU</span> {{ server.cpu.toFixed(1) }}%</span
+      >
+      <span class="strip-stat"
+        ><span class="strip-label">Mem</span> {{ server.memory.toFixed(0) }} MB</span
+      >
+      <span class="strip-stat"
+        ><span class="strip-label">TPS</span> {{ server.tps.toFixed(1) }}</span
+      >
+      <span class="strip-stat"
+        ><span class="strip-label">Players</span> {{ server.players }}/{{ server.maxPlayers }}</span
+      >
+      <div class="controls">
+        <button class="strip-btn" title="Clear logs" @click="emit('clear')">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 6h18M8 6V4h8v2M5 6l1 14h12l1-14M10 11v6M14 11v6" />
+          </svg>
+        </button>
+        <button
+          v-if="server.status === 'stopped'"
+          class="strip-btn power"
+          title="Start server"
+          @click="emit('start')"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </button>
+        <button
+          v-else
+          class="strip-btn power active"
+          title="Stop server"
+          :disabled="server.status === 'starting'"
+          @click="emit('stop')"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Views -->
@@ -152,109 +170,162 @@ const selectedPlayer = ref('');
   height: 100%;
 }
 
-.stats-bar {
+.stats-strip {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 12px 16px;
-  background: #252525;
-  border-bottom: 1px solid #333;
+  gap: 14px;
+  padding: 7px 16px;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex-shrink: 0;
 }
 
-.stat-label {
-  font-size: 11px;
-  color: #666;
-  text-transform: uppercase;
+.status-dot.running {
+  background: var(--color-success);
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
-.stat-value {
-  font-size: 14px;
-  color: #fff;
+.status-dot.starting {
+  background: var(--color-warning);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.3);
+  animation: pulse-glow 1s ease-in-out infinite;
+}
+
+.strip-status {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.strip-status.running {
+  color: var(--color-success);
+}
+
+.strip-status.starting {
+  color: var(--color-warning);
+}
+
+.strip-status.stopped {
+  color: var(--text-faint);
+}
+
+.strip-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border-default);
+}
+
+.strip-stat {
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
-.stat-value.status.running {
-  color: #4ade80;
-}
-
-.stat-value.status.starting {
-  color: #fbbf24;
-}
-
-.stat-value.status.stopped {
-  color: #666;
+.strip-label {
+  color: var(--text-faint);
+  font-weight: 500;
+  margin-right: 4px;
 }
 
 .controls {
   margin-left: auto;
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
-.btn {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+.strip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
   cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
 }
 
-.btn.start {
-  background: #4ade80;
-  color: #000;
+.strip-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
 }
 
-.btn.stop {
-  background: #ef4444;
-  color: #fff;
+.strip-btn.power {
+  color: var(--color-success);
+  border-color: rgba(74, 222, 128, 0.2);
 }
 
-.btn.clear {
-  background: #333;
-  color: #fff;
+.strip-btn.power:hover {
+  background: var(--color-success-muted);
+  border-color: rgba(74, 222, 128, 0.35);
 }
 
-.btn.clear:hover {
-  background: #444;
+.strip-btn.power.active {
+  color: var(--color-danger);
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
-.btn:disabled {
-  opacity: 0.5;
+.strip-btn.power.active:hover {
+  background: var(--color-danger-muted);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.strip-btn:disabled {
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
 .view-tabs {
   display: flex;
-  background: #252525;
-  border-bottom: 1px solid #333;
-  padding: 0 12px;
+  background: var(--bg-overlay);
+  border-bottom: 1px solid var(--border-default);
+  padding: 6px 14px;
+  gap: 4px;
+  align-items: center;
 }
 
 .view-tab {
-  padding: 10px 16px;
-  background: none;
-  border: none;
-  color: #888;
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 13px;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  font-weight: 500;
+  font-family: var(--font-ui);
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  position: relative;
 }
 
 .view-tab:hover {
-  color: #ccc;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .view-tab.active {
-  color: #f97316;
-  border-bottom-color: #f97316;
+  color: var(--text-primary);
+  background: var(--bg-surface);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
 }
 
 .server-tab > :deep(.console-view),

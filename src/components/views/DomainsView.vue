@@ -186,7 +186,21 @@ onMounted(async () => {
           <button class="disconnect-btn" @click="disconnect">Disconnect</button>
         </div>
         <div class="domains-zone-list">
-          <div v-if="zonesLoading" class="zones-loading">Loading zones...</div>
+          <div v-if="zonesLoading" class="zones-loading">
+            <svg
+              class="spinner"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            >
+              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+            </svg>
+            Loading zones...
+          </div>
           <div
             v-for="zone in zones"
             :key="zone.id"
@@ -208,12 +222,44 @@ onMounted(async () => {
             </svg>
             <span>{{ zone.name }}</span>
           </div>
-          <div v-if="!zonesLoading && zones.length === 0" class="zones-empty">No zones found</div>
+          <div v-if="!zonesLoading && zones.length === 0" class="zones-empty">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path
+                d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+              />
+            </svg>
+            <span>No zones found</span>
+          </div>
         </div>
       </div>
 
       <div class="domains-main">
-        <div v-if="!selectedZone" class="domains-empty">Select a zone to manage DNS records</div>
+        <div v-if="!selectedZone" class="domains-empty">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <path
+              d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+            />
+          </svg>
+          <span>Select a zone to manage DNS records</span>
+        </div>
         <template v-else>
           <div class="domains-main-header">
             <span class="main-title">SRV Records — {{ selectedZone.name }}</span>
@@ -263,7 +309,21 @@ onMounted(async () => {
 
           <!-- Records list -->
           <div class="records-list">
-            <div v-if="recordsLoading" class="records-loading">Loading records...</div>
+            <div v-if="recordsLoading" class="records-loading">
+              <svg
+                class="spinner"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                stroke-linecap="round"
+              >
+                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+              </svg>
+              Loading records...
+            </div>
             <div v-else-if="records.length === 0" class="records-empty">
               No SRV records found. Click "+ Add Record" to create one.
             </div>
@@ -290,7 +350,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   overflow: hidden;
-  background: #0d0d0d;
+  background: var(--bg-base);
 }
 
 /* Connect screen */
@@ -302,17 +362,18 @@ onMounted(async () => {
 }
 
 .connect-card {
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 8px;
-  padding: 32px;
-  max-width: 420px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  max-width: 440px;
   width: 100%;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
+  box-shadow: var(--shadow-lg);
 }
 
 .cf-icon {
@@ -321,32 +382,35 @@ onMounted(async () => {
 }
 
 .connect-card h2 {
-  color: #fff;
-  font-size: 18px;
+  color: var(--text-primary);
+  font-size: 20px;
+  font-weight: 700;
   margin: 0;
+  letter-spacing: -0.02em;
 }
 
 .connect-card p {
-  color: #888;
+  color: var(--text-secondary);
   font-size: 13px;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .permissions-box {
   width: 100%;
-  background: #252525;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
   text-align: center;
 }
 
 .permissions-title {
-  color: #888;
-  font-size: 11px;
+  color: var(--text-tertiary);
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
   display: block;
   margin-bottom: 8px;
 }
@@ -357,44 +421,47 @@ onMounted(async () => {
 }
 
 .perm-path {
-  color: #ccc;
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .perm-arrow {
-  color: #555;
+  color: var(--text-faint);
   margin: 0 2px;
 }
 
 .perm-label {
-  color: #888;
+  color: var(--text-tertiary);
 }
 
 .perm-value {
-  color: #ccc;
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 .perm-note {
-  color: #555;
+  color: var(--text-faint);
   font-size: 11px;
   font-style: italic;
 }
 
 .connect-hint {
-  color: #666 !important;
+  color: var(--text-tertiary) !important;
   font-size: 12px !important;
 }
 
 .connect-link {
-  color: #f97316;
+  color: var(--accent);
   cursor: pointer;
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-underline-offset: 3px;
+  transition: color var(--transition-fast);
 }
 
 .connect-link:hover {
-  color: #fb923c;
+  color: var(--accent-hover);
 }
 
 .connect-form {
@@ -406,43 +473,51 @@ onMounted(async () => {
 
 .connect-input {
   flex: 1;
-  padding: 8px 12px;
-  background: #252525;
-  border: 1px solid #333;
-  border-radius: 4px;
-  color: #fff;
+  padding: 9px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
   font-size: 13px;
+  font-family: var(--font-mono);
+  transition: border-color var(--transition-fast);
 }
 
 .connect-input:focus {
   outline: none;
-  border-color: #f97316;
+  border-color: var(--accent);
 }
 
 .connect-btn {
-  padding: 8px 16px;
-  background: #f97316;
+  padding: 9px 20px;
+  background: var(--accent);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
+  font-family: var(--font-ui);
   cursor: pointer;
   white-space: nowrap;
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .connect-btn:hover {
-  background: #ea580c;
+  background: var(--accent-hover);
+  box-shadow: 0 0 16px var(--accent-muted);
 }
 
 .connect-btn:disabled {
-  background: #333;
-  color: #666;
+  background: var(--bg-surface);
+  color: var(--text-faint);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .connect-error {
-  color: #ef4444;
+  color: var(--color-danger);
   font-size: 12px;
   text-align: left;
   width: 100%;
@@ -450,41 +525,45 @@ onMounted(async () => {
 
 /* Sidebar */
 .domains-sidebar {
-  width: 200px;
-  background: #1a1a1a;
-  border-right: 1px solid #333;
+  width: 210px;
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
 }
 
 .domains-sidebar-header {
-  padding: 8px;
-  border-bottom: 1px solid #333;
+  padding: 10px;
+  border-bottom: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .sidebar-title {
-  color: #888;
-  font-size: 12px;
+  color: var(--text-tertiary);
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
 .disconnect-btn {
-  padding: 4px 8px;
+  padding: 4px 10px;
   background: transparent;
-  border: 1px solid #444;
-  border-radius: 3px;
-  color: #888;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-tertiary);
   font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
   cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
 .disconnect-btn:hover {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 
 .domains-zone-list {
@@ -496,28 +575,49 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  color: #888;
+  padding: 10px 14px;
+  color: var(--text-tertiary);
   cursor: pointer;
   font-size: 13px;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .zone-item:hover {
-  background: #252525;
-  color: #ccc;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
 }
 
 .zone-item.active {
-  background: #333;
-  color: #fff;
+  background: var(--bg-active);
+  color: var(--text-primary);
 }
 
-.zones-loading,
-.zones-empty {
-  padding: 12px;
-  color: #444;
+.zones-loading {
+  padding: 14px;
+  color: var(--text-faint);
   font-size: 12px;
   font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zones-empty {
+  padding: 20px 14px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-style: italic;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.5;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
 }
 
 /* Main panel */
@@ -529,46 +629,59 @@ onMounted(async () => {
 }
 
 .domains-empty {
-  color: #444;
+  color: var(--text-faint);
   font-style: italic;
   text-align: center;
-  padding: 40px;
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  opacity: 0.5;
 }
 
 .domains-main-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #333;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .main-title {
-  color: #fff;
-  font-size: 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .add-record-btn {
-  padding: 6px 14px;
-  background: #f97316;
+  padding: 7px 16px;
+  background: var(--accent);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: #fff;
   font-size: 12px;
   font-weight: 600;
+  font-family: var(--font-ui);
   cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .add-record-btn:hover {
-  background: #ea580c;
+  background: var(--accent-hover);
+  box-shadow: 0 0 12px var(--accent-muted);
 }
 
 /* Create form */
 .create-form {
-  padding: 12px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #333;
+  padding: 14px 16px;
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .form-row {
@@ -581,7 +694,7 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 
 .form-group-small {
@@ -589,10 +702,11 @@ onMounted(async () => {
 }
 
 .form-group label {
-  color: #888;
-  font-size: 11px;
+  color: var(--text-tertiary);
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
 .input-hint {
@@ -602,20 +716,24 @@ onMounted(async () => {
 }
 
 .hint {
-  color: #555;
-  font-size: 11px;
+  color: var(--text-faint);
+  font-size: 10px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
 }
 
 .subdomain-input {
   display: flex;
   align-items: center;
-  background: #252525;
-  border: 1px solid #333;
-  border-radius: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast);
 }
 
 .subdomain-input:focus-within {
-  border-color: #f97316;
+  border-color: var(--accent);
 }
 
 .subdomain-field {
@@ -628,54 +746,60 @@ onMounted(async () => {
 
 .subdomain-field:focus {
   outline: none;
+  box-shadow: none;
 }
 
 .subdomain-suffix {
-  color: #555;
-  font-size: 13px;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-family: var(--font-mono);
   padding-right: 10px;
   white-space: nowrap;
 }
 
 .form-input {
-  padding: 6px 10px;
-  background: #252525;
-  border: 1px solid #333;
-  border-radius: 4px;
-  color: #fff;
+  padding: 7px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
   font-size: 13px;
+  font-family: var(--font-ui);
+  transition: border-color var(--transition-fast);
 }
 
 .form-input:focus {
   outline: none;
-  border-color: #f97316;
+  border-color: var(--accent);
 }
 
 .create-btn {
-  padding: 6px 14px;
-  background: #4ade80;
+  padding: 7px 16px;
+  background: var(--color-success);
   border: none;
-  border-radius: 4px;
-  color: #000;
+  border-radius: var(--radius-sm);
+  color: #0a0a0f;
   font-size: 12px;
   font-weight: 600;
+  font-family: var(--font-ui);
   cursor: pointer;
   white-space: nowrap;
   align-self: flex-end;
+  transition: box-shadow var(--transition-fast);
 }
 
-.create-btn:hover {
-  background: #22c55e;
+.create-btn:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.25);
 }
 
 .create-btn:disabled {
-  background: #333;
-  color: #666;
+  background: var(--bg-surface);
+  color: var(--text-faint);
   cursor: not-allowed;
 }
 
 .create-error {
-  color: #ef4444;
+  color: var(--color-danger);
   font-size: 12px;
   margin-top: 8px;
 }
@@ -684,14 +808,25 @@ onMounted(async () => {
 .records-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px;
 }
 
-.records-loading,
-.records-empty {
-  color: #444;
+.records-loading {
+  color: var(--text-faint);
   font-style: italic;
-  padding: 24px;
+  padding: 28px;
+  text-align: center;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.records-empty {
+  color: var(--text-faint);
+  font-style: italic;
+  padding: 28px;
   text-align: center;
   font-size: 13px;
 }
@@ -700,51 +835,61 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 6px;
+  padding: 14px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
   margin-bottom: 8px;
+  transition: border-color var(--transition-fast);
+}
+
+.record-item:hover {
+  border-color: var(--border-default);
 }
 
 .record-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
 .record-name {
-  color: #fff;
-  font-size: 13px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-weight: 500;
 }
 
 .record-content {
-  color: #888;
-  font-size: 12px;
-  font-family: 'Consolas', 'Monaco', monospace;
+  color: var(--text-tertiary);
+  font-size: 11.5px;
+  font-family: var(--font-mono);
 }
 
 .record-details {
-  color: #555;
+  color: var(--text-faint);
   font-size: 11px;
 }
 
 .delete-btn {
-  padding: 4px 10px;
+  padding: 5px 12px;
   background: transparent;
-  border: 1px solid #444;
-  border-radius: 3px;
-  color: #888;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text-tertiary);
   font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-ui);
   cursor: pointer;
   flex-shrink: 0;
   margin-left: 12px;
+  transition: all var(--transition-fast);
 }
 
 .delete-btn:hover {
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: var(--color-danger-muted);
 }
 </style>

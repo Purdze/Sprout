@@ -79,9 +79,9 @@ watch(
   }
 );
 
-function getSlotItem(slotNum: number) {
+function getSlotItem(slotNum: number, source: 'inventory' | 'enderChest' = 'inventory') {
   if (!player.value) return null;
-  return player.value.inventory.find((s) => s.slot === slotNum) || null;
+  return player.value[source].find((s) => s.slot === slotNum) || null;
 }
 
 function formatItemName(id: string): string {
@@ -119,8 +119,7 @@ const hotbar = computed(() => Array.from({ length: 9 }, (_, i) => i));
 const enderSlots = computed(() => Array.from({ length: 27 }, (_, i) => i));
 
 function getEnderSlotItem(slotNum: number) {
-  if (!player.value) return null;
-  return player.value.enderChest.find((s) => s.slot === slotNum) || null;
+  return getSlotItem(slotNum, 'enderChest');
 }
 
 function formatDimension(dim: string): string {
@@ -274,7 +273,21 @@ function formatPosition(x: number, y: number, z: number): string {
     </div>
 
     <!-- Loading / Error -->
-    <div v-if="loading" class="panel-body state-msg">Loading inventory...</div>
+    <div v-if="loading" class="panel-body state-msg">
+      <svg
+        class="spinner"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+        stroke-linecap="round"
+      >
+        <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+      </svg>
+      Loading inventory...
+    </div>
     <div v-else-if="error" class="panel-body state-msg err">{{ error }}</div>
 
     <!-- Inventory -->
@@ -492,7 +505,7 @@ function formatPosition(x: number, y: number, z: number): string {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #0d0d0d;
+  background: var(--bg-base);
   overflow-y: auto;
 }
 
@@ -500,39 +513,39 @@ function formatPosition(x: number, y: number, z: number): string {
 .panel-header {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 20px;
-  background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
-  border-bottom: 1px solid #2a2a2a;
+  gap: 16px;
+  padding: 18px 22px;
+  background: linear-gradient(135deg, var(--bg-raised) 0%, var(--bg-overlay) 100%);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .back-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   background: none;
-  border: 1px solid #333;
-  border-radius: 6px;
-  color: #666;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .back-btn:hover {
-  color: #fff;
-  border-color: #555;
-  background: #2a2a2a;
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 .player-head {
   width: 56px;
   height: 56px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   image-rendering: pixelated;
-  border: 2px solid #333;
+  border: 2px solid var(--border-strong);
   flex-shrink: 0;
 }
 
@@ -544,26 +557,27 @@ function formatPosition(x: number, y: number, z: number): string {
 .player-title {
   margin: 0;
   font-size: 20px;
-  color: #fff;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-weight: 700;
+  letter-spacing: -0.03em;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .online-badge {
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
   border-radius: 4px;
-  background: #333;
-  color: #666;
+  background: var(--bg-active);
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
 }
 
 .online-badge.online {
-  background: rgba(74, 222, 128, 0.15);
-  color: #4ade80;
+  background: var(--color-success-muted);
+  color: var(--color-success);
 }
 
 .player-stats {
@@ -575,10 +589,11 @@ function formatPosition(x: number, y: number, z: number): string {
 
 .pstat {
   font-size: 13px;
-  color: #777;
+  color: var(--text-tertiary);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
 }
 
 .pstat-mc-icon {
@@ -589,88 +604,98 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .pstat.mode {
-  color: #555;
+  color: var(--text-faint);
   font-style: italic;
 }
 
 .last-refreshed {
   font-size: 11px;
-  color: #444;
+  color: var(--text-faint);
   white-space: nowrap;
+  font-family: var(--font-mono);
 }
 
 .refresh-btn {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   background: none;
-  border: 1px solid #333;
-  border-radius: 6px;
-  color: #666;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .refresh-btn:hover:not(:disabled) {
-  color: #f97316;
-  border-color: #f97316;
-  background: rgba(249, 115, 22, 0.08);
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-muted);
 }
 
 .refresh-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.25;
   cursor: not-allowed;
 }
 
 /* Body */
 .panel-body {
-  padding: 18px 20px;
+  padding: 20px 22px;
 }
 
 .state-msg {
-  color: #555;
+  color: var(--text-faint);
   font-style: italic;
   text-align: center;
-  padding: 40px 20px;
+  padding: 48px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.spinner {
+  animation: spin 0.8s linear infinite;
 }
 
 .state-msg.err {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 /* Tab bar */
 .tab-bar {
   display: flex;
   gap: 4px;
-  margin-bottom: 14px;
-  border-bottom: 1px solid #2a2a2a;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 10px;
 }
 
 .tab-btn {
-  padding: 6px 16px;
+  padding: 7px 18px;
   background: none;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  color: #666;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
   font-size: 13px;
   font-weight: 500;
+  font-family: var(--font-ui);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .tab-btn:hover {
-  color: #aaa;
-  border-color: #444;
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
 }
 
 .tab-btn.active {
-  background: #1a1a1a;
-  color: #f97316;
-  border-color: #f97316;
+  background: var(--bg-raised);
+  color: var(--accent);
+  border-color: var(--accent);
 }
 
 /* Stats grid */
@@ -678,40 +703,41 @@ function formatPosition(x: number, y: number, z: number): string {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .stat-item {
-  background: #141414;
-  border: 1px solid #222;
-  border-radius: 6px;
-  padding: 8px 10px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .stat-label {
-  font-size: 10px;
-  color: #555;
+  font-size: 9px;
+  color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
 .stat-value {
   font-size: 13px;
-  color: #ccc;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
 .stat-item.disabled {
-  opacity: 0.4;
+  opacity: 0.35;
 }
 
 .stat-value.muted {
-  font-size: 11px;
+  font-size: 10px;
   font-style: italic;
-  color: #555;
+  color: var(--text-faint);
 }
 
 /* Inventory layout */
@@ -719,7 +745,7 @@ function formatPosition(x: number, y: number, z: number): string {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
   gap: 3px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .inv-main {
@@ -729,10 +755,11 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .section-label {
-  font-size: 11px;
-  color: #555;
+  font-size: 10px;
+  color: var(--text-faint);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  font-weight: 600;
   margin-bottom: 6px;
 }
 
@@ -743,22 +770,32 @@ function formatPosition(x: number, y: number, z: number): string {
   gap: 3px;
 }
 
-/* Inventory cell */
-.inv-cell {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 3px;
-  aspect-ratio: 1;
+.inv-cell,
+.equip-cell {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
+  transition: border-color var(--transition-fast);
 }
 
-.inv-cell.empty {
-  background: #131313;
-  border-color: #1e1e1e;
+.inv-cell:not(.empty):hover,
+.equip-cell:not(.empty):hover {
+  border-color: var(--border-strong);
+}
+
+.inv-cell.empty,
+.equip-cell.empty {
+  background: var(--bg-base);
+  border-color: var(--border-subtle);
+}
+
+.inv-cell {
+  aspect-ratio: 1;
 }
 
 /* Item icon */
@@ -771,8 +808,8 @@ function formatPosition(x: number, y: number, z: number): string {
 
 /* Text fallback when icon fails */
 .cell-fallback {
-  font-size: 9px;
-  color: #888;
+  font-size: 8px;
+  color: var(--text-tertiary);
   text-align: center;
   line-height: 1.1;
   word-break: break-word;
@@ -787,6 +824,7 @@ function formatPosition(x: number, y: number, z: number): string {
   font-size: 10px;
   font-weight: 700;
   color: #fff;
+  font-family: var(--font-mono);
   text-shadow:
     1px 1px 0 #000,
     -1px -1px 0 #000,
@@ -810,20 +848,7 @@ function formatPosition(x: number, y: number, z: number): string {
 }
 
 .equip-cell {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 3px;
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.equip-cell.empty {
-  background: #131313;
-  border-color: #1e1e1e;
 }
 
 /* Header actions */
@@ -831,55 +856,56 @@ function formatPosition(x: number, y: number, z: number): string {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .act-btn {
-  padding: 4px 10px;
-  border: 1px solid #333;
+  padding: 4px 12px;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font-size: 11px;
   cursor: pointer;
-  font-weight: 500;
+  font-weight: 600;
+  font-family: var(--font-ui);
   background: none;
-  transition: all 0.15s;
+  transition: all var(--transition-fast);
 }
 
 .act-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.25;
   cursor: not-allowed;
 }
 
 .act-btn:hover:not(:disabled) {
-  opacity: 0.85;
+  opacity: 0.9;
 }
 
 .act-btn.neutral {
-  color: #999;
-  border-color: #333;
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
 }
 
 .act-btn.neutral:hover:not(:disabled) {
-  color: #fff;
-  border-color: #555;
-  background: #2a2a2a;
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+  background: var(--bg-hover);
 }
 
 .act-btn.warn {
-  color: #f59e0b;
-  border-color: #f59e0b44;
+  color: var(--color-warning);
+  border-color: var(--color-warning-muted);
 }
 
 .act-btn.warn:hover:not(:disabled) {
-  background: rgba(245, 158, 11, 0.1);
+  background: var(--color-warning-muted);
 }
 
 .act-btn.danger {
-  color: #ef4444;
-  border-color: #ef444444;
+  color: var(--color-danger);
+  border-color: var(--color-danger-muted);
 }
 
 .act-btn.danger:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.1);
+  background: var(--color-danger-muted);
 }
 </style>
