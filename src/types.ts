@@ -33,6 +33,11 @@ export interface CreateSrvForm {
   port: number;
 }
 
+export interface SavedCommand {
+  name: string;
+  command: string;
+}
+
 export interface Server {
   id: string;
   name: string;
@@ -51,6 +56,7 @@ export interface Server {
   plugins: Plugin[];
   configFiles: string[];
   configContent: string;
+  savedCommands: SavedCommand[];
 }
 
 export interface InventorySlot {

@@ -6,7 +6,8 @@ import PlayersView from './views/PlayersView.vue';
 import PlayerInventoryView from './views/PlayerInventoryView.vue';
 import ConfigView from './views/ConfigView.vue';
 import DomainsView from './views/DomainsView.vue';
-import type { Server } from '../types';
+import CommandsView from './views/CommandsView.vue';
+import type { Server, SavedCommand } from '../types';
 
 defineProps<{
   server: Server;
@@ -20,9 +21,10 @@ const emit = defineEmits<{
   loadConfigFiles: [dir: string];
   loadConfigFile: [dir: string, file: string];
   saveConfigFile: [dir: string, file: string, content: string];
+  'update:savedCommands': [commands: SavedCommand[]];
 }>();
 
-const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains' | 'inventory'>(
+const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains' | 'commands' | 'inventory'>(
   'console'
 );
 const selectedPlayer = ref('');
@@ -55,6 +57,12 @@ const selectedPlayer = ref('');
         @click="activeView = 'config'"
       >
         Config
+      </button>
+      <button
+        :class="['view-tab', { active: activeView === 'commands' }]"
+        @click="activeView = 'commands'"
+      >
+        Commands
       </button>
       <button
         :class="['view-tab', { active: activeView === 'domains' }]"
@@ -157,6 +165,13 @@ const selectedPlayer = ref('');
       @load-config-files="(dir) => emit('loadConfigFiles', dir)"
       @load-config-file="(dir, file) => emit('loadConfigFile', dir, file)"
       @save-config-file="(dir, file, content) => emit('saveConfigFile', dir, file, content)"
+    />
+
+    <CommandsView
+      v-show="activeView === 'commands'"
+      :server="server"
+      @command="(cmd) => emit('command', cmd)"
+      @update:saved-commands="(cmds) => emit('update:savedCommands', cmds)"
     />
 
     <DomainsView v-show="activeView === 'domains'" :server="server" />
@@ -333,6 +348,7 @@ const selectedPlayer = ref('');
 .server-tab > :deep(.players-view),
 .server-tab > :deep(.inventory-view),
 .server-tab > :deep(.config-view),
+.server-tab > :deep(.commands-view),
 .server-tab > :deep(.domains-view) {
   flex: 1;
   min-height: 0;

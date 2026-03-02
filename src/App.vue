@@ -26,6 +26,7 @@ const SERVER_DEFAULTS = {
   plugins: [] as string[],
   configFiles: [] as string[],
   configContent: '',
+  savedCommands: [] as { name: string; command: string }[],
 };
 
 function withServerDefaults(partial: Partial<Server>): Server {
@@ -316,6 +317,12 @@ function parseLogForStats(server: Server, log: string) {
         @load-config-file="(dir, file) => loadConfigFile(servers[activeTab], dir, file)"
         @save-config-file="
           (dir, file, content) => saveConfigFile(servers[activeTab], dir, file, content)
+        "
+        @update:saved-commands="
+          (cmds) => {
+            servers[activeTab].savedCommands = cmds;
+            saveConfig();
+          }
         "
       />
     </div>
