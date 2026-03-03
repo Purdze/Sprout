@@ -7,9 +7,10 @@ import { check, type Update } from '@tauri-apps/plugin-updater';
 import ServerTab from './components/ServerTab.vue';
 import TabBar from './components/TabBar.vue';
 import AddServerDialog from './components/AddServerDialog.vue';
-import AboutDialog from './components/AboutDialog.vue';
+import SettingsDialog from './components/SettingsDialog.vue';
 import UpdateDialog from './components/UpdateDialog.vue';
 import type { Server } from './types';
+import { applyAccent } from './utils/accent';
 
 const servers = ref<Server[]>([]);
 const activeTab = ref(0);
@@ -24,7 +25,7 @@ const checkingUpdate = ref(false);
 const upToDate = ref(false);
 const updateInfo = ref<{ version: string; body: string }>({ version: '', body: '' });
 const updateObject = shallowRef<Update | null>(null);
-const showAboutDialog = ref(false);
+const showSettingsDialog = ref(false);
 const showUpdateDialog = ref(false);
 
 async function checkForUpdate() {
@@ -47,7 +48,7 @@ async function checkForUpdate() {
 }
 
 function openUpdateDialog() {
-  showAboutDialog.value = false;
+  showSettingsDialog.value = false;
   showUpdateDialog.value = true;
 }
 
@@ -217,6 +218,15 @@ async function sendCommand(server: Server, command: string) {
 }
 
 onMounted(async () => {
+  try {
+    const settings = await invoke<{ minimize_to_tray: boolean; accent_color: string | null }>(
+      'load_app_settings'
+    );
+    applyAccent(settings.accent_color);
+  } catch {
+    // ignore
+  }
+
   await loadConfig();
 
   unlistenTransfer = await listen<{ server: string; targetWindow: string; sourceWindow: string }>(
@@ -356,7 +366,7 @@ function parseLogForStats(server: Server, log: string) {
       @remove="removeServer"
       @add="showAddDialog = true"
       @server-removed="handleServerRemoved"
-      @open-about="showAboutDialog = true"
+      @open-settings="showSettingsDialog = true"
     />
 
     <div v-if="servers.length > 0" class="content">
@@ -412,8 +422,8 @@ function parseLogForStats(server: Server, log: string) {
 
     <AddServerDialog v-model:show="showAddDialog" @add="addServer" />
 
-    <AboutDialog
-      v-model:show="showAboutDialog"
+    <SettingsDialog
+      v-model:show="showSettingsDialog"
       :update-available="updateAvailable"
       :checking-update="checkingUpdate"
       :up-to-date="upToDate"

@@ -1,7 +1,6 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
   "productName": "Sprout",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "identifier": "dev.pumpkin.panel",
   "build": {
     "beforeDevCommand": "pnpm dev",

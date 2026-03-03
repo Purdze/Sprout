@@ -12,6 +12,8 @@ use sysinfo::{Pid, System};
 use flate2::read::GzDecoder;
 use std::io::Read;
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use futures_util::StreamExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -355,6 +357,62 @@ async fn rcon_command(stream: &mut tokio::net::TcpStream, cmd: &str) -> Result<S
     Ok(body)
 }
 
+fn default_true() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppSettings {
+    #[serde(default = "default_true")]
+    pub minimize_to_tray: bool,
+    #[serde(default)]
+    pub accent_color: Option<String>,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            minimize_to_tray: true,
+            accent_color: None,
+        }
+    }
+}
+
+pub struct AppSettingsState(pub Mutex<AppSettings>);
+
+fn get_settings_path() -> PathBuf {
+    let config_dir = dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("sprout");
+    fs::create_dir_all(&config_dir).ok();
+    config_dir.join("settings.json")
+}
+
+#[tauri::command]
+fn load_app_settings() -> Result<AppSettings, String> {
+    let path = get_settings_path();
+    if !path.exists() {
+        return Ok(AppSettings::default());
+    }
+    let content = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let settings: AppSettings = serde_json::from_str(&content).map_err(|e| e.to_string())?;
+    Ok(settings)
+}
+
+#[tauri::command]
+fn save_app_settings(settings: AppSettings, app: AppHandle) -> Result<(), String> {
+    let path = get_settings_path();
+    let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+    fs::write(path, json).map_err(|e| e.to_string())?;
+
+    // Update managed state
+    let state = app.state::<AppSettingsState>();
+    let mut s = state.0.lock().unwrap();
+    *s = settings;
+
+    Ok(())
+}
+
 fn get_config_path() -> PathBuf {
     let config_dir = dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
@@ -374,10 +432,11 @@ fn get_server_data_dir(server_id: &str) -> PathBuf {
 }
 
 #[tauri::command]
-fn save_config(servers: Vec<Server>) -> Result<(), String> {
+fn save_config(servers: Vec<Server>, app: AppHandle) -> Result<(), String> {
     let path = get_config_path();
     let json = serde_json::to_string_pretty(&servers).map_err(|e| e.to_string())?;
     fs::write(path, json).map_err(|e| e.to_string())?;
+    rebuild_tray_menu(&app);
     Ok(())
 }
 
@@ -392,14 +451,8 @@ fn load_config() -> Result<Vec<Server>, String> {
     Ok(servers)
 }
 
-#[tauri::command]
-async fn start_server(
-    id: String,
-    path: String,
-    app: AppHandle,
-    state: State<'_, ServerProcesses>,
-) -> Result<(), String> {
-    let server_path = PathBuf::from(&path);
+fn start_server_core(id: &str, path: &str, app: &AppHandle, processes: &ServerProcesses) -> Result<(), String> {
+    let server_path = PathBuf::from(path);
 
     // Find the pumpkin executable
     let exe_name = if cfg!(windows) { "pumpkin.exe" } else { "pumpkin" };
@@ -428,7 +481,7 @@ async fn start_server(
     // Capture stdout
     if let Some(stdout) = child.stdout.take() {
         let app_clone = app.clone();
-        let id_clone = id.clone();
+        let id_clone = id.to_string();
         std::thread::spawn(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines().map_while(Result::ok) {
@@ -448,7 +501,7 @@ async fn start_server(
     // Capture stderr
     if let Some(stderr) = child.stderr.take() {
         let app_clone = app.clone();
-        let id_clone = id.clone();
+        let id_clone = id.to_string();
         std::thread::spawn(move || {
             let reader = BufReader::new(stderr);
             for line in reader.lines().map_while(Result::ok) {
@@ -466,23 +519,43 @@ async fn start_server(
     }
 
     let pid = child.id();
-    state.processes.lock().unwrap().insert(id, ServerProcess { child, pid });
+    processes.processes.lock().unwrap().insert(id.to_string(), ServerProcess { child, pid });
     Ok(())
 }
 
 #[tauri::command]
-fn stop_server(id: String, state: State<'_, ServerProcesses>) -> Result<(), String> {
-    let mut processes = state.processes.lock().unwrap();
-    if let Some(mut server_proc) = processes.remove(&id) {
+async fn start_server(
+    id: String,
+    path: String,
+    app: AppHandle,
+    state: State<'_, ServerProcesses>,
+) -> Result<(), String> {
+    start_server_core(&id, &path, &app, &state)?;
+    rebuild_tray_menu(&app);
+    Ok(())
+}
+
+fn stop_server_core(id: &str, processes: &ServerProcesses) -> Result<(), String> {
+    let mut procs = processes.processes.lock().unwrap();
+    if let Some(mut server_proc) = procs.remove(id) {
         // Try to send "stop" command first for graceful shutdown
         if let Some(stdin) = server_proc.child.stdin.as_mut() {
             writeln!(stdin, "stop").ok();
         }
+        // Release lock before sleeping
+        drop(procs);
         // Give it a moment, then kill if still running
         std::thread::sleep(std::time::Duration::from_secs(2));
         server_proc.child.kill().ok();
         server_proc.child.wait().ok();
     }
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_server(id: String, app: AppHandle, state: State<'_, ServerProcesses>) -> Result<(), String> {
+    stop_server_core(&id, &state)?;
+    rebuild_tray_menu(&app);
     Ok(())
 }
 
@@ -1850,14 +1923,51 @@ fn save_window_state(state: &WindowState) {
     }
 }
 
+fn rebuild_tray_menu(app: &AppHandle) {
+    let Some(tray) = app.tray_by_id("main-tray") else { return };
+
+    let servers = load_config().unwrap_or_default();
+    let state = app.state::<ServerProcesses>();
+    let processes = state.processes.lock().unwrap();
+
+    let mut builder = MenuBuilder::new(app);
+    for server in &servers {
+        let is_running = processes.contains_key(&server.id);
+        let label = if is_running {
+            format!("\u{25CF}  {}", server.name)
+        } else {
+            format!("\u{25CB}  {}", server.name)
+        };
+        if let Ok(item) = MenuItemBuilder::with_id(format!("toggle-{}", server.id), &label).build(app) {
+            builder = builder.item(&item);
+        }
+    }
+    drop(processes);
+
+    if let Ok(show) = MenuItemBuilder::with_id("show", "Show Window").build(app) {
+        if let Ok(quit) = MenuItemBuilder::with_id("quit", "Quit").build(app) {
+            if let Ok(menu) = builder.separator().item(&show).item(&quit).build() {
+                let _ = tray.set_menu(Some(menu));
+            }
+        }
+    }
+}
+
 fn main() {
+    let initial_settings = load_app_settings().unwrap_or_default();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(ServerProcesses::default())
         .manage(SystemMonitor {
             sys: Mutex::new(System::new()),
         })
+        .manage(AppSettingsState(Mutex::new(initial_settings)))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
@@ -1868,9 +1978,18 @@ fn main() {
             }
 
             let w = window.clone();
+            let app_handle = app.handle().clone();
             window.on_window_event(move |event| {
                 use tauri::WindowEvent;
                 match event {
+                    WindowEvent::CloseRequested { api, .. } => {
+                        let settings = app_handle.state::<AppSettingsState>();
+                        let s = settings.0.lock().unwrap();
+                        if s.minimize_to_tray {
+                            api.prevent_close();
+                            let _ = w.hide();
+                        }
+                    }
                     WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
                         if let (Ok(size), Ok(pos)) = (w.inner_size(), w.outer_position()) {
                             let scale = w.scale_factor().unwrap_or(1.0);
@@ -1885,6 +2004,62 @@ fn main() {
                     _ => {}
                 }
             });
+
+            // Build system tray
+            TrayIconBuilder::with_id("main-tray")
+                .icon(tauri::image::Image::from_bytes(include_bytes!("../icons/tray-icon.png"))?)
+                .tooltip("Sprout")
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| {
+                    let id = event.id().as_ref().to_string();
+                    if id == "quit" {
+                        app.exit(0);
+                    } else if id == "show" {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                        }
+                    } else if id.starts_with("toggle-") {
+                        let server_id = id.strip_prefix("toggle-").unwrap().to_string();
+                        let app = app.clone();
+                        std::thread::spawn(move || {
+                            let state = app.state::<ServerProcesses>();
+                            let is_running = state.processes.lock().unwrap().contains_key(&server_id);
+                            if is_running {
+                                stop_server_core(&server_id, &state).ok();
+                            } else {
+                                let servers = load_config().unwrap_or_default();
+                                if let Some(server) = servers.iter().find(|s| s.id == server_id) {
+                                    start_server_core(&server_id, &server.path, &app, &state).ok();
+                                }
+                            }
+                            rebuild_tray_menu(&app);
+                        });
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                })
+                .build(app)?;
+
+            rebuild_tray_menu(app.handle());
 
             Ok(())
         })
@@ -1916,6 +2091,8 @@ fn main() {
             toggle_plugin,
             list_subdirectories,
             get_max_players,
+            load_app_settings,
+            save_app_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
