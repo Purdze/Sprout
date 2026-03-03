@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, shallowRef, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, emit as tauriEmit, type UnlistenFn } from '@tauri-apps/api/event';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { check, type Update } from '@tauri-apps/plugin-updater';
 import ServerTab from './components/ServerTab.vue';
 import TabBar from './components/TabBar.vue';
 import AddServerDialog from './components/AddServerDialog.vue';
+import AboutDialog from './components/AboutDialog.vue';
+import UpdateDialog from './components/UpdateDialog.vue';
 import type { Server } from './types';
 
 const servers = ref<Server[]>([]);
@@ -16,6 +19,33 @@ let unlistenTransfer: UnlistenFn | null = null;
 let statsInterval: ReturnType<typeof setInterval> | null = null;
 const draggingTab = ref<number | null>(null);
 const currentWindowLabel = getCurrentWebviewWindow().label;
+const updateAvailable = ref(false);
+const checkingUpdate = ref(false);
+const updateInfo = ref<{ version: string; body: string }>({ version: '', body: '' });
+const updateObject = shallowRef<Update | null>(null);
+const showAboutDialog = ref(false);
+const showUpdateDialog = ref(false);
+
+async function checkForUpdate() {
+  checkingUpdate.value = true;
+  try {
+    const update = await check();
+    if (update) {
+      updateAvailable.value = true;
+      updateInfo.value = { version: update.version, body: update.body ?? '' };
+      updateObject.value = update;
+    }
+  } catch (e) {
+    console.error('Update check failed:', e);
+  } finally {
+    checkingUpdate.value = false;
+  }
+}
+
+function openUpdateDialog() {
+  showAboutDialog.value = false;
+  showUpdateDialog.value = true;
+}
 
 const SERVER_DEFAULTS = {
   logs: [] as string[],
@@ -238,6 +268,11 @@ onMounted(async () => {
   });
 
   statsInterval = setInterval(updateStats, 2000);
+
+  await checkForUpdate();
+  if (updateAvailable.value) {
+    showUpdateDialog.value = true;
+  }
 });
 
 onUnmounted(() => {
@@ -301,10 +336,12 @@ function parseLogForStats(server: Server, log: string) {
       :servers="servers"
       :active-tab="activeTab"
       :current-window-label="currentWindowLabel"
+      :update-available="updateAvailable"
       @update:active-tab="activeTab = $event"
       @remove="removeServer"
       @add="showAddDialog = true"
       @server-removed="handleServerRemoved"
+      @open-about="showAboutDialog = true"
     />
 
     <div v-if="servers.length > 0" class="content">
@@ -359,6 +396,21 @@ function parseLogForStats(server: Server, log: string) {
     </div>
 
     <AddServerDialog v-model:show="showAddDialog" @add="addServer" />
+
+    <AboutDialog
+      v-model:show="showAboutDialog"
+      :update-available="updateAvailable"
+      :checking-update="checkingUpdate"
+      @check-update="checkForUpdate"
+      @open-update="openUpdateDialog"
+    />
+
+    <UpdateDialog
+      v-model:show="showUpdateDialog"
+      :version="updateInfo.version"
+      :release-notes="updateInfo.body"
+      :update="updateObject"
+    />
   </div>
 </template>
 

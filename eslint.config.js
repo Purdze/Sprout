@@ -35,6 +35,8 @@ export default [
         HTMLCanvasElement: 'readonly',
         MouseEvent: 'readonly',
         Event: 'readonly',
+        structuredClone: 'readonly',
+        __COMMIT_HASH__: 'readonly',
       },
     },
     plugins: {

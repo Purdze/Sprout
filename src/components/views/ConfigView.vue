@@ -2,7 +2,12 @@
 import { ref, computed, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import type { Server } from '../../types';
-import { detectFormat, parseConfig, serializeConfig, type ConfigFormat } from '../../utils/configParser';
+import {
+  detectFormat,
+  parseConfig,
+  serializeConfig,
+  type ConfigFormat,
+} from '../../utils/configParser';
 import VisualConfigEditor from './VisualConfigEditor.vue';
 
 const props = defineProps<{
@@ -256,7 +261,10 @@ const showModeToggle = computed(
             <div class="sidebar-section-header" @click="toggleSection('plugins')">
               <svg
                 :class="['disclosure', { open: !collapsedSections.has('plugins') }]"
-                width="10" height="10" viewBox="0 0 24 24" fill="currentColor"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="currentColor"
               >
                 <path d="M8 5l8 7-8 7z" />
               </svg>
@@ -265,11 +273,19 @@ const showModeToggle = computed(
             </div>
             <template v-if="!collapsedSections.has('plugins')">
               <div v-for="plugin in pluginDlls" :key="plugin.file" class="plugin-row">
-                <span class="plugin-name" :class="{ disabled: !plugin.enabled }">{{ plugin.name }}</span>
+                <span class="plugin-name" :class="{ disabled: !plugin.enabled }">{{
+                  plugin.name
+                }}</span>
                 <button
                   :class="['toggle-switch', { on: plugin.enabled }]"
                   :disabled="server.status !== 'stopped'"
-                  :title="server.status !== 'stopped' ? 'Stop server to toggle' : (plugin.enabled ? 'Disable' : 'Enable')"
+                  :title="
+                    server.status !== 'stopped'
+                      ? 'Stop server to toggle'
+                      : plugin.enabled
+                        ? 'Disable'
+                        : 'Enable'
+                  "
                   @click.stop="emit('togglePlugin', plugin.file, !plugin.enabled)"
                 >
                   <span class="toggle-knob" />
@@ -282,7 +298,10 @@ const showModeToggle = computed(
             <div class="sidebar-section-header" @click="toggleSection('folders')">
               <svg
                 :class="['disclosure', { open: !collapsedSections.has('folders') }]"
-                width="10" height="10" viewBox="0 0 24 24" fill="currentColor"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="currentColor"
               >
                 <path d="M8 5l8 7-8 7z" />
               </svg>
@@ -296,9 +315,19 @@ const showModeToggle = computed(
                 :class="['config-file-item', { active: selectedPlugin === folder }]"
                 @click="selectPlugin(folder)"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                  />
                 </svg>
                 <span>{{ folder }}</span>
               </div>
@@ -309,7 +338,10 @@ const showModeToggle = computed(
             <div class="sidebar-section-header" @click="toggleSection('files')">
               <svg
                 :class="['disclosure', { open: !collapsedSections.has('files') }]"
-                width="10" height="10" viewBox="0 0 24 24" fill="currentColor"
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="currentColor"
               >
                 <path d="M8 5l8 7-8 7z" />
               </svg>
@@ -320,10 +352,23 @@ const showModeToggle = computed(
               <div
                 v-for="file in topLevelPluginConfigs"
                 :key="file"
-                :class="['config-file-item', { active: selectedConfigFile === file && !selectedPlugin }]"
-                @click="selectedPlugin = ''; selectConfigFile(file)"
+                :class="[
+                  'config-file-item',
+                  { active: selectedConfigFile === file && !selectedPlugin },
+                ]"
+                @click="
+                  selectedPlugin = '';
+                  selectConfigFile(file);
+                "
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <polyline points="14 2 14 8 20 8" />
                 </svg>
@@ -333,11 +378,23 @@ const showModeToggle = computed(
           </template>
 
           <div
-            v-if="pluginDlls.length === 0 && pluginFolderList.length === 0 && topLevelPluginConfigs.length === 0"
+            v-if="
+              pluginDlls.length === 0 &&
+              pluginFolderList.length === 0 &&
+              topLevelPluginConfigs.length === 0
+            "
             class="config-empty"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
               <polyline points="13 2 13 9 20 9" />
             </svg>
@@ -354,15 +411,30 @@ const showModeToggle = computed(
             :class="['config-file-item', { active: selectedConfigFile === file }]"
             @click="selectConfigFile(file)"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
             <span>{{ file }}</span>
           </div>
           <div v-if="!server.configFiles || server.configFiles.length === 0" class="config-empty">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
               <polyline points="13 2 13 9 20 9" />
             </svg>
@@ -387,7 +459,9 @@ const showModeToggle = computed(
           <template v-else>
             {{ selectedConfigFile || (isPluginsDir ? 'Select a plugin' : 'Select a file') }}
           </template>
-          <span v-if="formatLabel && selectedConfigFile" class="format-badge">{{ formatLabel }}</span>
+          <span v-if="formatLabel && selectedConfigFile" class="format-badge">{{
+            formatLabel
+          }}</span>
           <span v-if="selectedConfigFile && isReadOnly()" class="readonly-badge">Read Only</span>
         </span>
         <div class="config-editor-actions">
@@ -396,14 +470,21 @@ const showModeToggle = computed(
               :class="['mode-btn', { active: editorMode === 'visual' }]"
               :disabled="editorMode === 'visual'"
               @click="switchToVisual"
-            >Visual</button>
+            >
+              Visual
+            </button>
             <button
               :class="['mode-btn', { active: editorMode === 'raw' }]"
               :disabled="editorMode === 'raw'"
               @click="switchToRaw"
-            >Raw</button>
+            >
+              Raw
+            </button>
           </div>
-          <span v-if="parseError && editorMode === 'raw' && configFormat !== 'unknown'" class="parse-error">
+          <span
+            v-if="parseError && editorMode === 'raw' && configFormat !== 'unknown'"
+            class="parse-error"
+          >
             Parse error
           </span>
           <template v-if="selectedDirectory === 'logs'">
@@ -415,33 +496,51 @@ const showModeToggle = computed(
             <span v-if="configModified" class="config-modified">Modified</span>
             <button
               class="config-save-btn"
-              :disabled="!configModified || server.status !== 'stopped' || selectedConfigFile.endsWith('.gz')"
+              :disabled="
+                !configModified || server.status !== 'stopped' || selectedConfigFile.endsWith('.gz')
+              "
               @click="saveConfig"
-            >Save</button>
+            >
+              Save
+            </button>
           </template>
         </div>
       </div>
 
-      <div
-        v-if="isPluginsDir && selectedPlugin && !selectedConfigFile"
-        class="plugin-file-browser"
-      >
+      <div v-if="isPluginsDir && selectedPlugin && !selectedConfigFile" class="plugin-file-browser">
         <div
           v-for="file in pluginSubFiles"
           :key="file"
           class="plugin-file-row"
           @click="selectPluginFile(file)"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
             <polyline points="14 2 14 8 20 8" />
           </svg>
           <span class="plugin-file-name">{{ file }}</span>
-          <span v-if="file.includes('.')" class="plugin-file-ext">{{ file.split('.').pop()?.toUpperCase() }}</span>
+          <span v-if="file.includes('.')" class="plugin-file-ext">{{
+            file.split('.').pop()?.toUpperCase()
+          }}</span>
         </div>
         <div v-if="pluginSubFiles.length === 0" class="plugin-no-files">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
           <span>No config files for this plugin</span>
@@ -452,8 +551,16 @@ const showModeToggle = computed(
         v-else-if="isPluginsDir && !selectedPlugin && !selectedConfigFile"
         class="plugin-landing"
       >
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          width="40"
+          height="40"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
           <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
           <polyline points="14 2 14 8 20 8" />
         </svg>

@@ -32,6 +32,7 @@ const props = defineProps<{
   servers: Server[];
   activeTab: number;
   currentWindowLabel: string;
+  updateAvailable: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -39,6 +40,7 @@ const emit = defineEmits<{
   remove: [index: number];
   add: [];
   serverRemoved: [serverId: string];
+  openAbout: [];
 }>();
 
 const draggingTab = ref<number | null>(null);
@@ -178,6 +180,27 @@ async function onTabDrop(event: DragEvent) {
         @click="open('https://discord.gg/qsRhJUP4q5')"
       >
         <FontAwesomeIcon :icon="['fab', 'discord']" />
+      </button>
+
+      <button
+        :class="['icon-btn', 'about-btn', { 'has-update': updateAvailable }]"
+        :title="updateAvailable ? 'Update available' : 'About Sprout'"
+        @click="emit('openAbout')"
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
       </button>
 
       <div class="window-controls">
@@ -412,6 +435,15 @@ async function onTabDrop(event: DragEvent) {
 
 .discord-btn:hover {
   color: #7289da;
+}
+
+.about-btn.has-update {
+  color: var(--color-info);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.about-btn.has-update:hover {
+  background: rgba(96, 165, 250, 0.12);
 }
 
 /* Window controls */

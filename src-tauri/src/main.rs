@@ -1861,6 +1861,8 @@ fn main() {
         .manage(SystemMonitor {
             sys: Mutex::new(System::new()),
         })
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             if let Some(state) = load_window_state() {

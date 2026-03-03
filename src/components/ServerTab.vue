@@ -25,9 +25,9 @@ const emit = defineEmits<{
   'update:savedCommands': [commands: SavedCommand[]];
 }>();
 
-const activeView = ref<'console' | 'graphs' | 'players' | 'config' | 'domains' | 'commands' | 'inventory'>(
-  'console'
-);
+const activeView = ref<
+  'console' | 'graphs' | 'players' | 'config' | 'domains' | 'commands' | 'inventory'
+>('console');
 const selectedPlayer = ref('');
 </script>
 

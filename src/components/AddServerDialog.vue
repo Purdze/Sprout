@@ -138,34 +138,6 @@ function close() {
 </template>
 
 <style scoped>
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fade-in 150ms ease;
-}
-
-.dialog {
-  background: var(--bg-overlay);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
-  padding: 28px;
-  min-width: 420px;
-  box-shadow: var(--shadow-lg);
-}
-
-.dialog h3 {
-  margin: 0 0 20px;
-  color: var(--text-primary);
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
 .form-group {
   margin-bottom: 18px;
 }
@@ -204,17 +176,6 @@ function close() {
   flex: 1;
 }
 
-.btn {
-  padding: 9px 18px;
-  border-radius: var(--radius-sm);
-  border: none;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: var(--font-ui);
-  transition: all var(--transition-fast);
-}
-
 .btn.browse {
   background: var(--bg-active);
   color: var(--text-primary);
@@ -223,27 +184,6 @@ function close() {
 
 .btn.browse:hover {
   background: var(--bg-hover);
-}
-
-.btn.primary {
-  background: var(--accent);
-  color: #fff;
-}
-
-.btn.primary:hover {
-  background: var(--accent-hover);
-  box-shadow: 0 0 14px var(--accent-muted);
-}
-
-.btn.secondary {
-  background: var(--bg-surface);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-default);
-}
-
-.btn.secondary:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
 }
 
 .btn.download {
@@ -268,28 +208,6 @@ function close() {
   gap: 8px;
 }
 
-.progress-bar {
-  width: 100%;
-  height: 6px;
-  background: var(--bg-base);
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 99px;
-  transition: width 0.3s ease;
-  box-shadow: 0 0 8px var(--accent-muted);
-}
-
-.progress-text {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-}
-
 .download-done {
   color: var(--color-success);
   font-size: 13px;
@@ -300,12 +218,5 @@ function close() {
   color: #f87171;
   font-size: 12px;
   margin-top: 6px;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 24px;
 }
 </style>

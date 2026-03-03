@@ -133,11 +133,14 @@ const entries = computed(() => Object.entries(props.data));
           <span class="section-badge">{{ (value as unknown[]).length }} items</span>
         </div>
         <div v-if="!isCollapsed(key)" class="section-body">
-          <template v-for="(item, i) in (value as unknown[])" :key="i">
-            <div v-if="typeof item === 'object' && item !== null && !Array.isArray(item)" class="nested-item">
+          <template v-for="(item, i) in value as unknown[]" :key="i">
+            <div
+              v-if="typeof item === 'object' && item !== null && !Array.isArray(item)"
+              class="nested-item"
+            >
               <span class="array-index">[{{ i }}]</span>
               <VisualConfigEditor
-                :data="(item as Record<string, unknown>)"
+                :data="item as Record<string, unknown>"
                 :disabled="disabled"
                 :path="[...path, key, String(i)]"
                 @update:data="(v) => updateArrayItem(key, i, v)"
@@ -191,7 +194,7 @@ const entries = computed(() => Object.entries(props.data));
         </div>
         <div v-if="!isCollapsed(key)" class="section-body">
           <VisualConfigEditor
-            :data="(value as Record<string, unknown>)"
+            :data="value as Record<string, unknown>"
             :disabled="disabled"
             :path="[...path, key]"
             @update:data="(v) => updateValue(key, v)"
