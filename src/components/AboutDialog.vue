@@ -7,6 +7,7 @@ defineProps<{
   show: boolean;
   updateAvailable: boolean;
   checkingUpdate: boolean;
+  upToDate: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -27,7 +28,7 @@ onMounted(async () => {
 
 <template>
   <div v-if="show" class="dialog-overlay" @click="emit('update:show', false)">
-    <div class="about" @click.stop>
+    <div class="about compact-dialog" @click.stop>
       <div class="top">
         <span class="name">Sprout</span>
         <span class="meta">
@@ -43,6 +44,7 @@ onMounted(async () => {
         <button v-if="updateAvailable" class="update-link available" @click="emit('openUpdate')">
           Update available
         </button>
+        <span v-else-if="upToDate" class="up-to-date">Up to date</span>
         <button v-else class="update-link" :disabled="checkingUpdate" @click="emit('checkUpdate')">
           <svg
             v-if="checkingUpdate"
@@ -64,15 +66,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.about {
-  background: var(--bg-overlay);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  padding: 14px 18px;
-  min-width: 320px;
-  box-shadow: var(--shadow-lg);
-}
-
 .top {
   margin-bottom: 12px;
 }
@@ -85,36 +78,9 @@ onMounted(async () => {
   margin-bottom: 2px;
 }
 
-.meta {
-  font-size: 12px;
-  color: var(--text-faint);
-}
-
 .mono {
   font-family: var(--font-mono);
   font-size: 11px;
-}
-
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-}
-
-.spacer {
-  flex: 1;
-}
-
-.link,
-.update-link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-size: 12px;
-  font-family: var(--font-ui);
-  cursor: pointer;
-  transition: color var(--transition-fast);
 }
 
 .link {
@@ -129,15 +95,14 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+
+.update-link:not(.available) {
   color: var(--text-faint);
 }
 
-.update-link:hover:not(:disabled) {
+.update-link:not(.available):hover:not(:disabled) {
   color: var(--text-secondary);
-}
-
-.update-link:disabled {
-  cursor: default;
 }
 
 .update-link.available {
@@ -145,8 +110,12 @@ onMounted(async () => {
 }
 
 .update-link.available:hover {
-  color: var(--color-info);
   filter: brightness(1.2);
+}
+
+.up-to-date {
+  color: var(--color-success);
+  font-size: 12px;
 }
 
 .spin {

@@ -13,6 +13,11 @@ const emit = defineEmits<{
 
 const collapsed = ref(new Set<string>());
 
+const DROPDOWN_OPTIONS: Record<string, string[]> = {
+  default_difficulty: ['Peaceful', 'Easy', 'Normal', 'Hard'],
+  default_gamemode: ['Survival', 'Creative', 'Adventure', 'Spectator'],
+};
+
 const SLIDER_RANGES: Record<string, [number, number]> = {
   view_distance: [2, 32],
   simulation_distance: [2, 32],
@@ -37,9 +42,16 @@ function isCollapsed(key: string): boolean {
   return collapsed.value.has([...props.path, key].join('.'));
 }
 
+function normalizeKey(key: string): string {
+  return key.toLowerCase().replace(/-/g, '_');
+}
+
 function getSliderRange(key: string): [number, number] | null {
-  const lower = key.toLowerCase().replace(/-/g, '_');
-  return SLIDER_RANGES[lower] || null;
+  return SLIDER_RANGES[normalizeKey(key)] || null;
+}
+
+function getDropdownOptions(key: string): string[] | null {
+  return DROPDOWN_OPTIONS[normalizeKey(key)] || null;
 }
 
 function updateValue(key: string, value: unknown) {
@@ -101,7 +113,19 @@ const entries = computed(() => Object.entries(props.data));
       <template v-else-if="typeof value === 'string'">
         <div class="field-row">
           <label class="field-label">{{ key }}</label>
+          <select
+            v-if="getDropdownOptions(key)"
+            class="select-input"
+            :value="value"
+            :disabled="disabled"
+            @change="updateValue(key, ($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="opt in getDropdownOptions(key)" :key="opt" :value="opt">
+              {{ opt }}
+            </option>
+          </select>
           <input
+            v-else
             type="text"
             class="text-input"
             :value="value"
@@ -287,8 +311,9 @@ const entries = computed(() => Object.entries(props.data));
   flex-shrink: 0;
 }
 
-.number-input {
-  width: 90px;
+.number-input,
+.text-input,
+.select-input {
   padding: 4px 8px;
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
@@ -296,12 +321,18 @@ const entries = computed(() => Object.entries(props.data));
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 12px;
-  text-align: right;
 }
 
-.number-input:disabled {
+.number-input:disabled,
+.text-input:disabled,
+.select-input:disabled {
   color: var(--text-faint);
   cursor: not-allowed;
+}
+
+.number-input {
+  width: 90px;
+  text-align: right;
 }
 
 .number-slider {
@@ -317,18 +348,10 @@ const entries = computed(() => Object.entries(props.data));
   flex: 1;
   min-width: 120px;
   max-width: 320px;
-  padding: 4px 8px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 12px;
 }
 
-.text-input:disabled {
-  color: var(--text-faint);
-  cursor: not-allowed;
+.select-input {
+  cursor: pointer;
 }
 
 .null-label {

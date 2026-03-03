@@ -21,6 +21,7 @@ const draggingTab = ref<number | null>(null);
 const currentWindowLabel = getCurrentWebviewWindow().label;
 const updateAvailable = ref(false);
 const checkingUpdate = ref(false);
+const upToDate = ref(false);
 const updateInfo = ref<{ version: string; body: string }>({ version: '', body: '' });
 const updateObject = shallowRef<Update | null>(null);
 const showAboutDialog = ref(false);
@@ -28,12 +29,15 @@ const showUpdateDialog = ref(false);
 
 async function checkForUpdate() {
   checkingUpdate.value = true;
+  upToDate.value = false;
   try {
     const update = await check();
     if (update) {
       updateAvailable.value = true;
       updateInfo.value = { version: update.version, body: update.body ?? '' };
       updateObject.value = update;
+    } else {
+      upToDate.value = true;
     }
   } catch (e) {
     console.error('Update check failed:', e);
@@ -78,15 +82,24 @@ function createServer(name: string, path: string): Server {
     cpu: 0,
     memory: 0,
     players: 0,
-    maxPlayers: 20,
+    maxPlayers: 1000,
     tps: 0,
   });
+}
+
+async function syncMaxPlayers(server: Server) {
+  try {
+    server.maxPlayers = await invoke<number>('get_max_players', { path: server.path });
+  } catch {
+    // Keep existing value
+  }
 }
 
 async function addServer(name: string, path: string) {
   const server = createServer(name, path);
   servers.value.push(server);
   activeTab.value = servers.value.length - 1;
+  await syncMaxPlayers(server);
   await saveConfig();
 }
 
@@ -125,6 +138,7 @@ async function loadConfig() {
     }
 
     servers.value = filteredConfig.map((s) => withServerDefaults(s));
+    servers.value.forEach((s) => syncMaxPlayers(s));
   } catch (e) {
     console.error('Failed to load config:', e);
   }
@@ -170,6 +184,7 @@ async function startServer(server: Server) {
   try {
     await invoke('start_server', { id: server.id, path: server.path });
     server.status = 'running';
+    await syncMaxPlayers(server);
   } catch (e) {
     console.error('Failed to start server:', e);
     server.status = 'stopped';
@@ -401,6 +416,7 @@ function parseLogForStats(server: Server, log: string) {
       v-model:show="showAboutDialog"
       :update-available="updateAvailable"
       :checking-update="checkingUpdate"
+      :up-to-date="upToDate"
       @check-update="checkForUpdate"
       @open-update="openUpdateDialog"
     />

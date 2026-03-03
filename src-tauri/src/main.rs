@@ -43,7 +43,7 @@ pub struct Server {
 }
 
 fn default_max_players() -> u32 {
-    20
+    1000
 }
 
 pub struct ServerProcess {
@@ -256,22 +256,6 @@ fn parse_rcon_config(server_path: &str) -> RconConfig {
 
 #[tauri::command]
 fn get_rcon_config(path: String) -> Result<RconConfig, String> {
-    let features_path = PathBuf::from(&path).join("config").join("features.toml");
-    eprintln!("[RCON debug] Looking for: {:?} exists={}", features_path, features_path.exists());
-    if let Ok(content) = fs::read_to_string(&features_path) {
-        if let Ok(val) = content.parse::<toml::Value>() {
-            eprintln!("[RCON debug] Top-level keys: {:?}", val.as_table().map(|t| t.keys().collect::<Vec<_>>()));
-            if let Some(net) = val.get("networking") {
-                eprintln!("[RCON debug] networking keys: {:?}", net.as_table().map(|t| t.keys().collect::<Vec<_>>()));
-            } else {
-                eprintln!("[RCON debug] no 'networking' key found");
-            }
-        } else {
-            eprintln!("[RCON debug] TOML parse failed");
-        }
-    } else {
-        eprintln!("[RCON debug] Could not read file");
-    }
     Ok(parse_rcon_config(&path))
 }
 
@@ -1826,6 +1810,19 @@ fn get_save_interval(path: String) -> Result<u64, String> {
     Ok(config.player_data.save_player_cron_interval)
 }
 
+#[tauri::command]
+fn get_max_players(path: String) -> u32 {
+    let config_path = PathBuf::from(&path).join("config").join("configuration.toml");
+    if let Ok(content) = fs::read_to_string(&config_path) {
+        if let Ok(val) = content.parse::<toml::Value>() {
+            if let Some(n) = val.get("max_players").and_then(|v| v.as_integer()) {
+                return n as u32;
+            }
+        }
+    }
+    default_max_players()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WindowState {
     width: f64,
@@ -1918,6 +1915,7 @@ fn main() {
             get_save_interval,
             toggle_plugin,
             list_subdirectories,
+            get_max_players,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

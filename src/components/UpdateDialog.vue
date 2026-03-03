@@ -59,37 +59,30 @@ function close() {
 
 <template>
   <div v-if="show" class="dialog-overlay" @click="close">
-    <div class="dialog" @click.stop>
-      <h3>Update Available</h3>
-
-      <div class="version-info">
-        <span class="version-badge">v{{ version }}</span>
+    <div class="update compact-dialog" @click.stop>
+      <div class="top">
+        <span class="title">Update available</span>
+        <span class="meta">v{{ version }}</span>
       </div>
 
-      <div v-if="releaseNotes" class="release-notes">
-        <label>What's new</label>
-        <div class="notes-content">{{ releaseNotes }}</div>
-      </div>
+      <div v-if="releaseNotes && state === 'idle'" class="notes">{{ releaseNotes }}</div>
 
-      <div v-if="state === 'downloading' || state === 'done'" class="download-progress">
+      <div v-if="state === 'downloading' || state === 'done'" class="progress-section">
         <div class="progress-bar">
           <div class="progress-fill" :style="{ width: downloadPercent + '%' }"></div>
         </div>
         <span class="progress-text">
-          {{ state === 'done' ? 'Installing...' : `Downloading... ${downloadPercent}%` }}
+          {{ state === 'done' ? 'Installing...' : `${downloadPercent}%` }}
         </span>
       </div>
 
-      <div v-if="state === 'error'" class="error-message">
-        {{ errorMessage }}
-      </div>
+      <div v-if="state === 'error'" class="error">{{ errorMessage }}</div>
 
-      <div class="dialog-actions">
-        <button class="btn secondary" :disabled="state === 'downloading'" @click="close">
-          Later
-        </button>
+      <div class="actions">
+        <button class="link" :disabled="state === 'downloading'" @click="close">Later</button>
+        <span class="spacer" />
         <button
-          class="btn primary"
+          class="update-link"
           :disabled="state === 'downloading' || state === 'done'"
           @click="installUpdate"
         >
@@ -101,60 +94,74 @@ function close() {
 </template>
 
 <style scoped>
-.dialog {
-  max-width: 480px;
+.update {
+  max-width: 400px;
 }
 
-.version-info {
-  margin-bottom: 16px;
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-.version-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  background: var(--color-info);
-  color: #fff;
-  border-radius: 99px;
+.title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.notes {
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.release-notes {
-  margin-bottom: 18px;
-}
-
-.release-notes label {
-  display: block;
-  margin-bottom: 6px;
   color: var(--text-tertiary);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.notes-content {
-  padding: 10px 14px;
-  background: var(--bg-base);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-size: 13px;
   line-height: 1.5;
-  max-height: 160px;
+  margin-bottom: 10px;
+  max-height: 80px;
   overflow-y: auto;
   white-space: pre-wrap;
 }
 
-.download-progress {
+.progress-section {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 18px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-.error-message {
+.progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-base);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  color: var(--text-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: right;
+}
+
+.error {
   color: #f87171;
   font-size: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
+}
+
+.link {
+  color: var(--text-faint);
+}
+
+.link:hover:not(:disabled) {
+  color: var(--text-secondary);
 }
 </style>

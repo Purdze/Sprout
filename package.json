@@ -1,6 +1,6 @@
 {
   "name": "sprout",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "type": "module",
   "description": "Sprout - Server management panel for Pumpkin",
   "scripts": {

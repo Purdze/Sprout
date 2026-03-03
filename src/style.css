@@ -251,3 +251,55 @@ body.dragging * {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+/* Compact dialog panel (About, Update) */
+.compact-dialog {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  min-width: 320px;
+  box-shadow: var(--shadow-lg);
+}
+
+.compact-dialog .actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.compact-dialog .spacer {
+  flex: 1;
+}
+
+.compact-dialog .link,
+.compact-dialog .update-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.compact-dialog .link:disabled,
+.compact-dialog .update-link:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.compact-dialog .update-link {
+  color: var(--color-info);
+  font-weight: 600;
+}
+
+.compact-dialog .update-link:hover:not(:disabled) {
+  filter: brightness(1.2);
+}
+
+.compact-dialog .meta {
+  font-size: 12px;
+  color: var(--text-faint);
+}
