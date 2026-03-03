@@ -2,7 +2,8 @@
 
 A desktop server management panel for [Pumpkin](https://github.com/Pumpkin-MC/Pumpkin) Minecraft servers. Built with [Tauri v2](https://v2.tauri.app/), Vue 3, and Rust.
 
-![Console](screenshots/console.png)
+![Console](<img width="608" height="440" alt="image" src="https://github.com/user-attachments/assets/281f9406-60db-4d03-acc4-79295f60a2fa" />
+)
 
 ## Features
 
@@ -10,19 +11,15 @@ A desktop server management panel for [Pumpkin](https://github.com/Pumpkin-MC/Pu
 
 Manage multiple Pumpkin servers from a single window. Each server gets its own tab with a live status indicator (running, starting, stopped). Drag a tab out of the window to pop it into its own separate window — drag it back to re-dock it.
 
-![Tabs](screenshots/tabs.png)
-
-### Console
-
-View server logs in real time and send commands directly from the built-in console. Logs are buffered up to 1,000 lines with automatic scrolling.
-
-![Console](screenshots/console.png)
+![Tabs](<img width="216" height="67" alt="image" src="https://github.com/user-attachments/assets/1affccc3-205a-4ad0-ab26-063543b65ad3" />
+)
 
 ### Performance Graphs
 
 Monitor server health with live SVG graphs for CPU usage, memory usage, and TPS. Graphs auto-scale to your data and keep a rolling 2-minute history.
 
-![Graphs](screenshots/graphs.png)
+![Graphs](<img width="748" height="443" alt="image" src="https://github.com/user-attachments/assets/17bfee66-abd2-4b37-acaa-a0aaec2a62ee" />
+)
 
 ### Player Management
 
