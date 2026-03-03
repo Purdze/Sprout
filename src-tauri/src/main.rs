@@ -555,6 +555,26 @@ fn list_config_files(path: String, dir: String) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
+fn list_subdirectories(path: String, dir: String) -> Result<Vec<String>, String> {
+    let target_dir = PathBuf::from(&path).join(&dir);
+    let mut dirs = Vec::new();
+
+    if target_dir.exists() {
+        for entry in fs::read_dir(&target_dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let entry_path = entry.path();
+            if entry_path.is_dir() {
+                if let Some(name) = entry_path.file_name() {
+                    dirs.push(name.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    dirs.sort();
+    Ok(dirs)
+}
+
+#[tauri::command]
 fn read_config_file(path: String, dir: String, file: String) -> Result<String, String> {
     let file_path = PathBuf::from(&path).join(&dir).join(&file);
     if !file_path.exists() {
@@ -577,6 +597,24 @@ fn read_config_file(path: String, dir: String, file: String) -> Result<String, S
 fn save_config_file(path: String, dir: String, file: String, content: String) -> Result<(), String> {
     let file_path = PathBuf::from(&path).join(&dir).join(&file);
     fs::write(&file_path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn toggle_plugin(path: String, file: String, enable: bool) -> Result<String, String> {
+    let plugins_dir = PathBuf::from(&path).join("plugins");
+    if enable {
+        let from = plugins_dir.join(&file);
+        let new_name = file.trim_end_matches(".disabled").to_string();
+        let to = plugins_dir.join(&new_name);
+        fs::rename(&from, &to).map_err(|e| e.to_string())?;
+        Ok(new_name)
+    } else {
+        let from = plugins_dir.join(&file);
+        let new_name = format!("{}.disabled", file);
+        let to = plugins_dir.join(&new_name);
+        fs::rename(&from, &to).map_err(|e| e.to_string())?;
+        Ok(new_name)
+    }
 }
 
 fn detect_platform() -> Result<(String, String), String> {
@@ -1876,6 +1914,8 @@ fn main() {
             get_player_inventory_rcon,
             get_rcon_config,
             get_save_interval,
+            toggle_plugin,
+            list_subdirectories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

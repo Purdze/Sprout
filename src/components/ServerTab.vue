@@ -21,6 +21,7 @@ const emit = defineEmits<{
   loadConfigFiles: [dir: string];
   loadConfigFile: [dir: string, file: string];
   saveConfigFile: [dir: string, file: string, content: string];
+  togglePlugin: [file: string, enable: boolean];
   'update:savedCommands': [commands: SavedCommand[]];
 }>();
 
@@ -165,6 +166,7 @@ const selectedPlayer = ref('');
       @load-config-files="(dir) => emit('loadConfigFiles', dir)"
       @load-config-file="(dir, file) => emit('loadConfigFile', dir, file)"
       @save-config-file="(dir, file, content) => emit('saveConfigFile', dir, file, content)"
+      @toggle-plugin="(file, enable) => emit('togglePlugin', file, enable)"
     />
 
     <CommandsView

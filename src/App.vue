@@ -111,6 +111,7 @@ async function loadConfigFiles(server: Server, dir: string) {
 }
 
 async function loadConfigFile(server: Server, dir: string, file: string) {
+  server.configContent = '';
   try {
     const content = await invoke<string>('read_config_file', { path: server.path, dir, file });
     server.configContent = content;
@@ -317,6 +318,16 @@ function parseLogForStats(server: Server, log: string) {
         @load-config-file="(dir, file) => loadConfigFile(servers[activeTab], dir, file)"
         @save-config-file="
           (dir, file, content) => saveConfigFile(servers[activeTab], dir, file, content)
+        "
+        @toggle-plugin="
+          async (file: string, enable: boolean) => {
+            try {
+              await invoke('toggle_plugin', { path: servers[activeTab].path, file, enable });
+              await loadConfigFiles(servers[activeTab], 'plugins');
+            } catch (e) {
+              console.error('Failed to toggle plugin:', e);
+            }
+          }
         "
         @update:saved-commands="
           (cmds) => {
