@@ -55,6 +55,22 @@ Connect your Cloudflare account with an API token to manage SRV records for your
 
 ![Domains](screenshots/domains.png)
 
+### Commands
+
+Save frequently used server commands with custom names for quick access. Run any saved command with a single click.
+
+### Plugin Manager
+
+Browse and manage plugins in the `plugins` directory. Enable or disable plugins by toggling their file extension. Click a plugin to browse its config files and edit them with the visual config editor.
+
+### Visual Config Editor
+
+Edit TOML and JSON config files with a form-based UI. Booleans render as toggles, numbers get sliders where appropriate, and nested objects are collapsible sections. Switch between visual and raw text editing at any time.
+
+### Auto-Updater
+
+Sprout checks for updates on launch and prompts you to install when a new version is available. Updates are downloaded, verified, and installed automatically — then the app restarts. You can also manually check from the About dialog (? icon in the titlebar).
+
 ### Server Downloader
 
 When adding a new server, Sprout can automatically download the latest Pumpkin binary for your platform (Windows, Linux, macOS) directly from GitHub releases, with a progress bar.
